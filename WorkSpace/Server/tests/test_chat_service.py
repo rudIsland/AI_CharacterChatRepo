@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
 from app.database import Base
+from app.main import health_check
 from app.providers.model_provider import ModelProvider, ProviderChatRequest, ProviderChatResponse
 from app.repositories.character_repository import CharacterRepository
 from app.repositories.conversation_repository import ConversationRepository
@@ -64,3 +65,11 @@ def test_chat_service_saves_user_and_assistant_messages() -> None:
     assert len(messages) == 2
     assert messages[0].role == "user"
     assert messages[1].role == "assistant"
+
+
+def test_health_check_returns_service_metadata() -> None:
+    response = health_check()
+
+    assert response.status == "ok"
+    assert response.app_name == "AI Character Chat API"
+    assert response.environment == "development"
