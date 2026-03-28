@@ -153,6 +153,11 @@ function buildPublishedReviewComment(
   modelName: string,
   combinedReviewComment: string
 ): string {
+  const trimmedCombinedReviewComment = combinedReviewComment.trim();
+  if (!trimmedCombinedReviewComment) {
+    return "";
+  }
+
   const headerLines = [
     "## Gemini AI Review",
     "",
@@ -164,7 +169,7 @@ function buildPublishedReviewComment(
     "",
   ];
 
-  return `${headerLines.join("\n")}${combinedReviewComment.trim()}`;
+  return `${headerLines.join("\n")}${trimmedCombinedReviewComment}`;
 }
 
 runPipeline().catch((error) => {
