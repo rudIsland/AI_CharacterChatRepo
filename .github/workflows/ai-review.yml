@@ -134,31 +134,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `### AI Code Review\n\n${reviewContent}`,
-            });
-
-      - name: Post AI test code suggestions
-        if: steps.changed-files.outputs.any_changed == 'true'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const suggestionsPath = `${process.env.GITHUB_WORKSPACE}/test_suggestions.txt`;
-
-            if (!fs.existsSync(suggestionsPath)) {
-              core.info('test_suggestions.txt was not generated.');
-              return;
-            }
-
-            const suggestions = fs.readFileSync(suggestionsPath, 'utf8').trim();
-            if (!suggestions) {
-              core.info('AI test suggestion is empty.');
-              return;
-            }
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `### AI Test Suggestions\n\n${suggestions}`,
+              body: reviewContent,
             });
