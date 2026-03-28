@@ -112,7 +112,22 @@ jobs:
         working-directory: ./.github/ai-assist
         run: npx ts-node --project tsconfig.json src/pipeline/index.ts
 
+      - name: Check generated review output
+        id: review-output
+        if: always()
+        shell: bash
+        run: |
+          review_path="${GITHUB_WORKSPACE}/review_result.txt"
+
+          if [[ -f "$review_path" && -s "$review_path" ]]; then
+            echo "has_review=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_review=false" >> "$GITHUB_OUTPUT"
+
       - name: Post AI code review comment
+        if: steps.review-output.outputs.has_review == 'true'
         uses: actions/github-script@v8
         with:
           script: |
@@ -136,3 +151,10 @@ jobs:
               repo: context.repo.repo,
               body: reviewContent,
             });
+
+      - name: Fail workflow when review output is missing
+        if: steps.review-output.outputs.has_review != 'true'
+        shell: bash
+        run: |
+          echo "::error::Gemini review output was not generated. Check the 'Run AI review and test pipeline' step logs."
+          exit 1
