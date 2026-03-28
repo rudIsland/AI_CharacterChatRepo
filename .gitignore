@@ -140,3 +140,13 @@ dist
 review_result.txt
 test_suggestions.txt
 pr_diff.txt
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Local database
+WorkSpace/Server/app.db
