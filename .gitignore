@@ -134,3 +134,9 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+#.github
+.github/ai-assist/node_modules/
+review_result.txt
+test_suggestions.txt
+pr_diff.txt

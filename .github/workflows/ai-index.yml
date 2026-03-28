@@ -1,0 +1,121 @@
+name: "AI Index"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      full_reindex:
+        description: "Rebuild the whole pgvector collection"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  ai-index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: .github/ai-assist/package-lock.json
+
+      - name: Install AI assistant dependencies
+        working-directory: ./.github/ai-assist
+        run: npm ci
+
+      - name: Validate external services configuration
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PGVECTOR_HOST: ${{ vars.PGVECTOR_HOST }}
+          PGVECTOR_USER: ${{ secrets.PGVECTOR_USER }}
+          PGVECTOR_PASSWORD: ${{ secrets.PGVECTOR_PASSWORD }}
+          PGVECTOR_DATABASE: ${{ vars.PGVECTOR_DATABASE }}
+        run: |
+          missing=0
+          for name in GEMINI_API_KEY PGVECTOR_HOST PGVECTOR_USER PGVECTOR_PASSWORD PGVECTOR_DATABASE; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required for AI indexing."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Resolve indexing targets
+        id: index-targets
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.full_reindex }}" == "true" ]]; then
+            echo "full_reindex=true" >> "$GITHUB_OUTPUT"
+            echo "changed_files=" >> "$GITHUB_OUTPUT"
+            echo "deleted_files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          base_sha="${{ github.event.before }}"
+          head_sha="${{ github.sha }}"
+          if [[ -z "$base_sha" || "$base_sha" =~ ^0+$ ]]; then
+            echo "full_reindex=true" >> "$GITHUB_OUTPUT"
+            echo "changed_files=" >> "$GITHUB_OUTPUT"
+            echo "deleted_files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_files=()
+          deleted_files=()
+
+          while IFS=$'\t' read -r status first_path second_path; do
+            case "$status" in
+              A|M|C*)
+                changed_files+=("$first_path")
+                ;;
+              D)
+                deleted_files+=("$first_path")
+                ;;
+              R*)
+                deleted_files+=("$first_path")
+                changed_files+=("$second_path")
+                ;;
+            esac
+          done < <(git diff --name-status --find-renames "$base_sha" "$head_sha")
+
+          {
+            echo "full_reindex=false"
+            echo "changed_files<<EOF"
+            printf "%s\n" "${changed_files[@]}"
+            echo "EOF"
+            echo "deleted_files<<EOF"
+            printf "%s\n" "${deleted_files[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run pgvector indexing
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          FULL_REINDEX: ${{ steps.index-targets.outputs.full_reindex }}
+          INDEX_CHANGED_FILES: ${{ steps.index-targets.outputs.changed_files }}
+          INDEX_DELETED_FILES: ${{ steps.index-targets.outputs.deleted_files }}
+          PGVECTOR_HOST: ${{ vars.PGVECTOR_HOST }}
+          PGVECTOR_PORT: ${{ vars.PGVECTOR_PORT }}
+          PGVECTOR_USER: ${{ secrets.PGVECTOR_USER }}
+          PGVECTOR_PASSWORD: ${{ secrets.PGVECTOR_PASSWORD }}
+          PGVECTOR_DATABASE: ${{ vars.PGVECTOR_DATABASE }}
+          PGVECTOR_TABLE_NAME: ${{ vars.PGVECTOR_TABLE_NAME }}
+          PGVECTOR_COLLECTION_TABLE_NAME: ${{ vars.PGVECTOR_COLLECTION_TABLE_NAME }}
+          PGVECTOR_COLLECTION_NAME: ${{ vars.PGVECTOR_COLLECTION_NAME }}
+          PGVECTOR_ENABLE_HNSW: ${{ vars.PGVECTOR_ENABLE_HNSW }}
+          PGVECTOR_MAX_INDEXED_CHUNKS: ${{ vars.PGVECTOR_MAX_INDEXED_CHUNKS }}
+          PGVECTOR_REBUILD_INDEX: "false"
+        working-directory: ./.github/ai-assist
+        run: npx ts-node --project tsconfig.json src/indexing/index-codebase.ts

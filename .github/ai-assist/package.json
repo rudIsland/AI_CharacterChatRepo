@@ -1,0 +1,26 @@
+{
+  "name": "github-ai-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependencies for the AI Assistant GitHub Actions.",
+  "scripts": {
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "run:pipeline": "ts-node --project tsconfig.json src/pipeline/index.ts",
+    "run:index": "ts-node --project tsconfig.json src/indexing/index-codebase.ts"
+  },
+  "devDependencies": {
+    "@google/generative-ai": "^0.14.1",
+    "@types/node": "^20.19.37",
+    "@types/pg": "^8.20.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "@langchain/community": "^1.1.25",
+    "@langchain/core": "^1.1.36",
+    "@langchain/google-genai": "^2.1.26",
+    "langchain": "^1.2.37",
+    "pg": "^8.11.3",
+    "uuid": "^13.0.0"
+  }
+}
