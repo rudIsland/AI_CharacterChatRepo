@@ -14,12 +14,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: npm
@@ -32,18 +32,27 @@ jobs:
       - name: Validate external services configuration
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PGVECTOR_CONNECTION_STRING: ${{ secrets.PGVECTOR_CONNECTION_STRING }}
           PGVECTOR_HOST: ${{ vars.PGVECTOR_HOST }}
           PGVECTOR_USER: ${{ secrets.PGVECTOR_USER }}
           PGVECTOR_PASSWORD: ${{ secrets.PGVECTOR_PASSWORD }}
           PGVECTOR_DATABASE: ${{ vars.PGVECTOR_DATABASE }}
         run: |
           missing=0
-          for name in GEMINI_API_KEY PGVECTOR_HOST PGVECTOR_USER PGVECTOR_PASSWORD PGVECTOR_DATABASE; do
-            if [ -z "${!name}" ]; then
-              echo "::error::$name is required for AI review."
-              missing=1
-            fi
-          done
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::GEMINI_API_KEY is required for AI review."
+            missing=1
+          fi
+
+          if [ -z "$PGVECTOR_CONNECTION_STRING" ]; then
+            for name in PGVECTOR_HOST PGVECTOR_USER PGVECTOR_PASSWORD PGVECTOR_DATABASE; do
+              if [ -z "${!name}" ]; then
+                echo "::error::$name is required when PGVECTOR_CONNECTION_STRING is not set."
+                missing=1
+              fi
+            done
+          fi
+
           exit $missing
 
       - name: Extract PR diff
@@ -51,7 +60,7 @@ jobs:
 
       - name: Collect changed source files
         id: changed-files
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@v47
         with:
           files: |
             **/*.ts
@@ -86,6 +95,7 @@ jobs:
           GITHUB_WORKSPACE: ${{ github.workspace }}
           LLM_MODEL: gemini-2.5-flash
           RAG_TOP_K: "8"
+          PGVECTOR_CONNECTION_STRING: ${{ secrets.PGVECTOR_CONNECTION_STRING }}
           PGVECTOR_HOST: ${{ vars.PGVECTOR_HOST }}
           PGVECTOR_PORT: ${{ vars.PGVECTOR_PORT }}
           PGVECTOR_USER: ${{ secrets.PGVECTOR_USER }}
@@ -96,12 +106,14 @@ jobs:
           PGVECTOR_COLLECTION_NAME: ${{ vars.PGVECTOR_COLLECTION_NAME }}
           PGVECTOR_ENABLE_HNSW: ${{ vars.PGVECTOR_ENABLE_HNSW }}
           PGVECTOR_MAX_INDEXED_CHUNKS: ${{ vars.PGVECTOR_MAX_INDEXED_CHUNKS }}
+          PGVECTOR_SSL_ENABLED: ${{ vars.PGVECTOR_SSL_ENABLED }}
+          PGVECTOR_SSL_REJECT_UNAUTHORIZED: ${{ vars.PGVECTOR_SSL_REJECT_UNAUTHORIZED }}
           PGVECTOR_REBUILD_INDEX: "false"
         working-directory: ./.github/ai-assist
         run: npx ts-node --project tsconfig.json src/pipeline/index.ts
 
       - name: Post AI code review comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -122,31 +134,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `### AI Code Review\n\n${reviewContent}`,
-            });
-
-      - name: Post AI test code suggestions
-        if: steps.changed-files.outputs.any_changed == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const suggestionsPath = `${process.env.GITHUB_WORKSPACE}/test_suggestions.txt`;
-
-            if (!fs.existsSync(suggestionsPath)) {
-              core.info('test_suggestions.txt was not generated.');
-              return;
-            }
-
-            const suggestions = fs.readFileSync(suggestionsPath, 'utf8').trim();
-            if (!suggestions) {
-              core.info('AI test suggestion is empty.');
-              return;
-            }
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `### AI Test Suggestions\n\n${suggestions}`,
+              body: reviewContent,
             });

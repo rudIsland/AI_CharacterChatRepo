@@ -24,7 +24,7 @@ export async function generateTestSuggestions(
   input: TestGeneratorInput
 ): Promise<string> {
   if (input.changedFiles.length === 0) {
-    return "테스트 제안을 만들 변경 파일이 없습니다.";
+    return "## 테스트 코드 제안\n\n- 테스트 제안을 만들 변경 파일이 없습니다.";
   }
 
   const testPrompt = ChatPromptTemplate.fromTemplate(`
@@ -41,9 +41,21 @@ export async function generateTestSuggestions(
 - 테스트도 유지보수 대상이므로 이름, given-when-then 구조, 중복 최소화, 과도한 구현 결합을 신경 쓰세요.
 
 출력 형식:
-- 먼저 짧은 설명을 한국어로 작성하세요.
-- 그 다음 하나의 코드 블록으로 테스트 코드를 제시하세요.
-- 필요하면 마지막에 주의사항을 짧게 덧붙이세요.
+- 반드시 아래 형식을 따르세요.
+- 설명은 짧고 실무적으로 작성하세요.
+- 테스트 코드 전체를 장문으로 쓰기보다, 우선순위 높은 예시 중심으로 제시하세요.
+
+### {filePath}
+
+- 테스트 필요성:
+- 우선 검증할 시나리오:
+  - ...
+  - ...
+- 구현 메모:
+
+\`\`\`{codeBlockLanguage}
+// 핵심 테스트 예시
+\`\`\`
 
 [Project Context]
 {ragContext}
@@ -59,7 +71,7 @@ export async function generateTestSuggestions(
   `);
 
   const testChain = testPrompt.pipe(testModel).pipe(new StringOutputParser());
-  const suggestionSections: string[] = [];
+  const suggestionSections: string[] = ["## 테스트 코드 제안"];
 
   for (const changedFilePath of input.changedFiles) {
     const languageSettings = getLanguageSettings(changedFilePath);
@@ -86,11 +98,11 @@ export async function generateTestSuggestions(
       ragContext: input.ragContext.slice(0, CONTEXT_PREVIEW_LIMIT),
     });
 
-    suggestionSections.push(`### ${changedFilePath}\n\n${suggestion}`);
+    suggestionSections.push(suggestion.trim());
   }
 
-  if (suggestionSections.length === 0) {
-    return "테스트 제안을 생성할 수 있는 지원 대상 파일이 없습니다.";
+  if (suggestionSections.length === 1) {
+    return "## 테스트 코드 제안\n\n- 테스트 제안을 생성할 수 있는 지원 대상 파일이 없습니다.";
   }
 
   return suggestionSections.join("\n\n");

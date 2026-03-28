@@ -51,11 +51,15 @@ async function runPipeline(): Promise<void> {
     changedFiles: config.changedFiles,
     ragContext: retrievedContext.ragContext,
   });
+  const combinedReviewComment = buildCombinedReviewComment(
+    reviewComment,
+    testSuggestions
+  );
 
   const reviewOutputPath = path.join(config.workspacePath, "review_result.txt");
   const testOutputPath = path.join(config.workspacePath, "test_suggestions.txt");
 
-  writeFileSync(reviewOutputPath, reviewComment, "utf-8");
+  writeFileSync(reviewOutputPath, combinedReviewComment, "utf-8");
   writeFileSync(testOutputPath, testSuggestions, "utf-8");
 
   console.log(`RAG query text length: ${retrievedContext.queryText.length}`);
@@ -125,6 +129,20 @@ function createReviewModel(apiKey: string, modelName: string): BaseChatModel {
     apiKey,
     temperature: 0.2,
   }) as unknown as BaseChatModel;
+}
+
+function buildCombinedReviewComment(
+  reviewComment: string,
+  testSuggestions: string
+): string {
+  const trimmedReviewComment = reviewComment.trim();
+  const trimmedTestSuggestions = testSuggestions.trim();
+
+  if (!trimmedTestSuggestions) {
+    return trimmedReviewComment;
+  }
+
+  return `${trimmedReviewComment}\n\n---\n\n${trimmedTestSuggestions}`;
 }
 
 runPipeline().catch((error) => {

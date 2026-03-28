@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.api import character, chat, conversation
 from app.config import get_settings
 from app.database import init_database
+from app.schemas.health import HealthCheckResponse
 
 settings = get_settings()
 
@@ -22,9 +23,13 @@ app = FastAPI(
 )
 
 
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+@app.get("/health", response_model=HealthCheckResponse)
+def health_check() -> HealthCheckResponse:
+    return HealthCheckResponse(
+        status="ok",
+        app_name=settings.app_name,
+        environment=settings.app_env,
+    )
 
 
 app.include_router(character.router)
