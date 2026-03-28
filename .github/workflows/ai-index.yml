@@ -116,6 +116,7 @@ jobs:
           INDEX_CHANGED_FILES: ${{ steps.index-targets.outputs.changed_files }}
           INDEX_DELETED_FILES: ${{ steps.index-targets.outputs.deleted_files }}
           PGVECTOR_CONNECTION_STRING: ${{ secrets.PGVECTOR_CONNECTION_STRING }}
+          PGVECTOR_SSL_CA_CERT: ${{ secrets.PGVECTOR_SSL_CA_CERT }}
           PGVECTOR_HOST: ${{ vars.PGVECTOR_HOST }}
           PGVECTOR_PORT: ${{ vars.PGVECTOR_PORT }}
           PGVECTOR_USER: ${{ secrets.PGVECTOR_USER }}

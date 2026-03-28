@@ -32,6 +32,10 @@ async function runPipeline(): Promise<void> {
   console.log(
     `Gemini embedding model: ${config.pgVectorConfig.embeddingModelName}`
   );
+  console.log(`pgvector SSL enabled: ${config.pgVectorConfig.sslEnabled}`);
+  console.log(
+    `pgvector SSL CA configured: ${config.pgVectorConfig.sslCaCert ? "yes" : "no"}`
+  );
 
   const reviewModel = createReviewModel(config.apiKey, config.modelName);
   const ragRetriever = new ProjectContextRetriever(

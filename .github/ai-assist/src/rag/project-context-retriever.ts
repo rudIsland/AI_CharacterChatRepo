@@ -430,6 +430,7 @@ function buildPostgresConnectionOptions(
 
   if (config.sslEnabled) {
     connectionOptions.ssl = {
+      ca: config.sslCaCert,
       rejectUnauthorized: config.sslRejectUnauthorized,
     };
   }
