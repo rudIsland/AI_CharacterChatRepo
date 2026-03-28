@@ -37,18 +37,27 @@ jobs:
       - name: Validate external services configuration
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PGVECTOR_CONNECTION_STRING: ${{ secrets.PGVECTOR_CONNECTION_STRING }}
           PGVECTOR_HOST: ${{ vars.PGVECTOR_HOST }}
           PGVECTOR_USER: ${{ secrets.PGVECTOR_USER }}
           PGVECTOR_PASSWORD: ${{ secrets.PGVECTOR_PASSWORD }}
           PGVECTOR_DATABASE: ${{ vars.PGVECTOR_DATABASE }}
         run: |
           missing=0
-          for name in GEMINI_API_KEY PGVECTOR_HOST PGVECTOR_USER PGVECTOR_PASSWORD PGVECTOR_DATABASE; do
-            if [ -z "${!name}" ]; then
-              echo "::error::$name is required for AI indexing."
-              missing=1
-            fi
-          done
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::GEMINI_API_KEY is required for AI indexing."
+            missing=1
+          fi
+
+          if [ -z "$PGVECTOR_CONNECTION_STRING" ]; then
+            for name in PGVECTOR_HOST PGVECTOR_USER PGVECTOR_PASSWORD PGVECTOR_DATABASE; do
+              if [ -z "${!name}" ]; then
+                echo "::error::$name is required when PGVECTOR_CONNECTION_STRING is not set."
+                missing=1
+              fi
+            done
+          fi
+
           exit $missing
 
       - name: Resolve indexing targets
@@ -106,6 +115,7 @@ jobs:
           FULL_REINDEX: ${{ steps.index-targets.outputs.full_reindex }}
           INDEX_CHANGED_FILES: ${{ steps.index-targets.outputs.changed_files }}
           INDEX_DELETED_FILES: ${{ steps.index-targets.outputs.deleted_files }}
+          PGVECTOR_CONNECTION_STRING: ${{ secrets.PGVECTOR_CONNECTION_STRING }}
           PGVECTOR_HOST: ${{ vars.PGVECTOR_HOST }}
           PGVECTOR_PORT: ${{ vars.PGVECTOR_PORT }}
           PGVECTOR_USER: ${{ secrets.PGVECTOR_USER }}
@@ -116,6 +126,8 @@ jobs:
           PGVECTOR_COLLECTION_NAME: ${{ vars.PGVECTOR_COLLECTION_NAME }}
           PGVECTOR_ENABLE_HNSW: ${{ vars.PGVECTOR_ENABLE_HNSW }}
           PGVECTOR_MAX_INDEXED_CHUNKS: ${{ vars.PGVECTOR_MAX_INDEXED_CHUNKS }}
+          PGVECTOR_SSL_ENABLED: ${{ vars.PGVECTOR_SSL_ENABLED }}
+          PGVECTOR_SSL_REJECT_UNAUTHORIZED: ${{ vars.PGVECTOR_SSL_REJECT_UNAUTHORIZED }}
           PGVECTOR_REBUILD_INDEX: "false"
         working-directory: ./.github/ai-assist
         run: npx ts-node --project tsconfig.json src/indexing/index-codebase.ts

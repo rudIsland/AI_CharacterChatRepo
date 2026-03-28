@@ -242,13 +242,7 @@ export class ProjectContextRetriever {
   private async openVectorStore(): Promise<PGVectorStore> {
     const embeddingDimensions = await this.getEmbeddingDimensions();
     const vectorStore = await PGVectorStore.initialize(this.embeddings, {
-      postgresConnectionOptions: {
-        host: this.config.host,
-        port: this.config.port,
-        user: this.config.user,
-        password: this.config.password,
-        database: this.config.database,
-      } as PoolConfig,
+      postgresConnectionOptions: buildPostgresConnectionOptions(this.config),
       tableName: this.config.tableName,
       collectionTableName: this.config.collectionTableName,
       collectionName: this.config.collectionName,
@@ -414,6 +408,30 @@ export class ProjectContextRetriever {
     this.embeddingDimensions = probeVector.length;
     return this.embeddingDimensions;
   }
+}
+
+function buildPostgresConnectionOptions(
+  config: PgVectorRetrieverConfig
+): PoolConfig {
+  const connectionOptions: PoolConfig = config.connectionString
+    ? {
+        connectionString: config.connectionString,
+      }
+    : {
+        host: config.host,
+        port: config.port,
+        user: config.user,
+        password: config.password,
+        database: config.database,
+      };
+
+  if (config.sslEnabled) {
+    connectionOptions.ssl = {
+      rejectUnauthorized: config.sslRejectUnauthorized,
+    };
+  }
+
+  return connectionOptions;
 }
 
 function normalizePath(targetPath: string): string {

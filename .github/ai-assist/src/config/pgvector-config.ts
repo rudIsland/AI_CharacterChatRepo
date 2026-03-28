@@ -2,11 +2,14 @@ import * as path from "path";
 import type { DistanceStrategy } from "@langchain/community/vectorstores/pgvector";
 
 export interface PgVectorRetrieverConfig {
+  connectionString?: string;
   host: string;
   port: number;
   user: string;
   password: string;
   database: string;
+  sslEnabled: boolean;
+  sslRejectUnauthorized: boolean;
   tableName: string;
   collectionName: string;
   collectionTableName: string;
@@ -32,13 +35,27 @@ export function readPgVectorConfigFromEnv(
   const distanceStrategy = readDistanceStrategy(
     process.env.PGVECTOR_DISTANCE_STRATEGY
   );
+  const connectionString = readOptionalEnv(
+    process.env.PGVECTOR_CONNECTION_STRING
+  );
+  const host = process.env.PGVECTOR_HOST?.trim() || "127.0.0.1";
+  const isSupabaseConnection = isSupabaseTarget(connectionString, host);
 
   return {
-    host: process.env.PGVECTOR_HOST?.trim() || "127.0.0.1",
+    connectionString,
+    host,
     port: parseIntegerEnv(process.env.PGVECTOR_PORT, 5432),
     user: process.env.PGVECTOR_USER?.trim() || "postgres",
     password: process.env.PGVECTOR_PASSWORD?.trim() || "postgres",
     database: process.env.PGVECTOR_DATABASE?.trim() || "postgres",
+    sslEnabled: parseBooleanEnv(
+      process.env.PGVECTOR_SSL_ENABLED,
+      isSupabaseConnection
+    ),
+    sslRejectUnauthorized: parseBooleanEnv(
+      process.env.PGVECTOR_SSL_REJECT_UNAUTHORIZED,
+      true
+    ),
     tableName: process.env.PGVECTOR_TABLE_NAME?.trim() || "code_embeddings",
     collectionName:
       process.env.PGVECTOR_COLLECTION_NAME?.trim() || defaultCollectionName,
@@ -46,7 +63,10 @@ export function readPgVectorConfigFromEnv(
       process.env.PGVECTOR_COLLECTION_TABLE_NAME?.trim() ||
       "code_embedding_collections",
     distanceStrategy,
-    enableHnsw: parseBooleanEnv(process.env.PGVECTOR_ENABLE_HNSW, true),
+    enableHnsw: parseBooleanEnv(
+      process.env.PGVECTOR_ENABLE_HNSW,
+      !isSupabaseConnection
+    ),
     rebuildIndexOnRun: parseBooleanEnv(
       process.env.PGVECTOR_REBUILD_INDEX,
       false
@@ -95,6 +115,21 @@ function parseIntegerEnv(
 ): number {
   const parsedValue = Number(rawValue);
   return Number.isFinite(parsedValue) ? parsedValue : defaultValue;
+}
+
+function readOptionalEnv(rawValue: string | undefined): string | undefined {
+  const normalizedValue = rawValue?.trim();
+  return normalizedValue ? normalizedValue : undefined;
+}
+
+function isSupabaseTarget(
+  connectionString: string | undefined,
+  host: string
+): boolean {
+  return (
+    connectionString?.toLowerCase().includes("supabase.com") === true ||
+    host.toLowerCase().includes("supabase.com")
+  );
 }
 
 function sanitizeCollectionName(rawValue: string): string {
