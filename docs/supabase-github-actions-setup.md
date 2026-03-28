@@ -21,6 +21,7 @@ Add these in `Settings > Secrets and variables > Actions > Secrets`.
 ```text
 GEMINI_API_KEY
 PGVECTOR_CONNECTION_STRING
+PGVECTOR_SSL_CA_CERT
 ```
 
 If you prefer the older split configuration, add these secrets instead of the connection string:
@@ -35,6 +36,7 @@ PGVECTOR_PASSWORD
 Optional variables for Supabase:
 
 ```text
+GEMINI_EMBEDDING_MODEL=gemini-embedding-001
 PGVECTOR_SSL_ENABLED=true
 PGVECTOR_SSL_REJECT_UNAUTHORIZED=true
 PGVECTOR_PORT=5432
@@ -48,6 +50,9 @@ Notes:
 
 - `PGVECTOR_SSL_ENABLED` defaults to `true` when the host or connection string contains `supabase.com`.
 - `PGVECTOR_ENABLE_HNSW=false` is a safer starting point on managed databases. Turn it on only after confirming your Supabase plan and database permissions fit your workload.
+- If your runner reports `self-signed certificate in certificate chain`, either:
+  - add the Supabase CA certificate to `PGVECTOR_SSL_CA_CERT`, or
+  - set `PGVECTOR_SSL_REJECT_UNAUTHORIZED=false` as a quick workaround.
 
 ## Supabase connection string example
 
@@ -56,6 +61,12 @@ postgresql://postgres.xxxxx:[YOUR-PASSWORD]@aws-0-ap-northeast-2.pooler.supabase
 ```
 
 You can paste that full value into `PGVECTOR_CONNECTION_STRING`.
+
+## Supabase CA certificate
+
+For strict SSL verification, download the database CA certificate from the Supabase dashboard and store its full PEM content in the `PGVECTOR_SSL_CA_CERT` GitHub Secret.
+
+Supabase documents the CA certificate download flow in the SSL Configuration section of Database Settings.
 
 ## If you use split configuration instead
 

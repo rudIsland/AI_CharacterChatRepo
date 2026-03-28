@@ -142,7 +142,10 @@ export class ProjectContextRetriever {
   ) {
     this.workspacePath = workspacePath;
     this.config = config;
-    this.embeddings = new GoogleGenerativeAIEmbeddings({ apiKey });
+    this.embeddings = new GoogleGenerativeAIEmbeddings({
+      apiKey,
+      modelName: this.config.embeddingModelName,
+    });
   }
 
   async syncCollection(
@@ -427,6 +430,7 @@ function buildPostgresConnectionOptions(
 
   if (config.sslEnabled) {
     connectionOptions.ssl = {
+      ca: config.sslCaCert,
       rejectUnauthorized: config.sslRejectUnauthorized,
     };
   }

@@ -2,6 +2,7 @@ import * as path from "path";
 import type { DistanceStrategy } from "@langchain/community/vectorstores/pgvector";
 
 export interface PgVectorRetrieverConfig {
+  embeddingModelName: string;
   connectionString?: string;
   host: string;
   port: number;
@@ -10,6 +11,7 @@ export interface PgVectorRetrieverConfig {
   database: string;
   sslEnabled: boolean;
   sslRejectUnauthorized: boolean;
+  sslCaCert?: string;
   tableName: string;
   collectionName: string;
   collectionTableName: string;
@@ -38,10 +40,13 @@ export function readPgVectorConfigFromEnv(
   const connectionString = readOptionalEnv(
     process.env.PGVECTOR_CONNECTION_STRING
   );
+  const sslCaCert = readOptionalEnv(process.env.PGVECTOR_SSL_CA_CERT);
   const host = process.env.PGVECTOR_HOST?.trim() || "127.0.0.1";
   const isSupabaseConnection = isSupabaseTarget(connectionString, host);
 
   return {
+    embeddingModelName:
+      process.env.GEMINI_EMBEDDING_MODEL?.trim() || "gemini-embedding-001",
     connectionString,
     host,
     port: parseIntegerEnv(process.env.PGVECTOR_PORT, 5432),
@@ -56,6 +61,7 @@ export function readPgVectorConfigFromEnv(
       process.env.PGVECTOR_SSL_REJECT_UNAUTHORIZED,
       true
     ),
+    sslCaCert,
     tableName: process.env.PGVECTOR_TABLE_NAME?.trim() || "code_embeddings",
     collectionName:
       process.env.PGVECTOR_COLLECTION_NAME?.trim() || defaultCollectionName,
