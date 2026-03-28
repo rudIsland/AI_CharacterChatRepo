@@ -2,6 +2,7 @@ import * as path from "path";
 import type { DistanceStrategy } from "@langchain/community/vectorstores/pgvector";
 
 export interface PgVectorRetrieverConfig {
+  embeddingModelName: string;
   connectionString?: string;
   host: string;
   port: number;
@@ -42,6 +43,8 @@ export function readPgVectorConfigFromEnv(
   const isSupabaseConnection = isSupabaseTarget(connectionString, host);
 
   return {
+    embeddingModelName:
+      process.env.GEMINI_EMBEDDING_MODEL?.trim() || "gemini-embedding-001",
     connectionString,
     host,
     port: parseIntegerEnv(process.env.PGVECTOR_PORT, 5432),

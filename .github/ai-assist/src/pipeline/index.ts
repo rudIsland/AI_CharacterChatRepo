@@ -28,6 +28,10 @@ async function runPipeline(): Promise<void> {
   const prDiffText = readFileSync(config.prDiffPath, "utf-8");
   console.log(`Loaded PR diff: ${config.prDiffPath}`);
   console.log(`Changed files count: ${config.changedFiles.length}`);
+  console.log(`Gemini review model: ${config.modelName}`);
+  console.log(
+    `Gemini embedding model: ${config.pgVectorConfig.embeddingModelName}`
+  );
 
   const reviewModel = createReviewModel(config.apiKey, config.modelName);
   const ragRetriever = new ProjectContextRetriever(
