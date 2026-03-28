@@ -26,6 +26,8 @@ interface PipelineConfig {
 async function runPipeline(): Promise<void> {
   const config = readPipelineConfigFromEnv();
   const prDiffText = readFileSync(config.prDiffPath, "utf-8");
+  console.log(`Loaded PR diff: ${config.prDiffPath}`);
+  console.log(`Changed files count: ${config.changedFiles.length}`);
 
   const reviewModel = createReviewModel(config.apiKey, config.modelName);
   const ragRetriever = new ProjectContextRetriever(
@@ -34,18 +36,21 @@ async function runPipeline(): Promise<void> {
     config.pgVectorConfig
   );
 
+  console.log("Retrieving project context from pgvector.");
   const retrievedContext = await ragRetriever.retrieveContext({
     prDiff: prDiffText,
     changedFiles: config.changedFiles,
     topK: config.ragTopK,
   });
 
+  console.log("Generating Gemini review comment.");
   const reviewComment = await generateCodeReviewComment(reviewModel, {
     prDiff: prDiffText,
     changedFiles: config.changedFiles,
     ragContext: retrievedContext.ragContext,
   });
 
+  console.log("Generating Gemini test suggestions.");
   const testSuggestions = await generateTestSuggestions(reviewModel, {
     workspacePath: config.workspacePath,
     changedFiles: config.changedFiles,
@@ -59,6 +64,11 @@ async function runPipeline(): Promise<void> {
     config.modelName,
     combinedReviewComment
   );
+  if (!publishedReviewComment.trim()) {
+    throw new Error(
+      "Gemini returned an empty review output. Check the model response and upstream retrieval logs."
+    );
+  }
 
   const reviewOutputPath = path.join(config.workspacePath, "review_result.txt");
   const testOutputPath = path.join(config.workspacePath, "test_suggestions.txt");
