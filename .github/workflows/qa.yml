@@ -71,8 +71,17 @@ jobs:
           QA_SUMMARY_FILE: ${{ runner.temp }}/qa-summary.md
         run: node .\qa\scripts\write-qa-summary.mjs
 
+      - name: Explain PR QA comment skip
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ""
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "## PR 코멘트 안내"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ""
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- 현재 PR은 fork에서 올라와 GitHub 토큰이 읽기 전용입니다."
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- 그래서 PR 코멘트 작성은 건너뛰고, 이 Job Summary에만 QA 요약을 남깁니다."
+
       - name: Write PR QA comment
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         continue-on-error: true
         uses: actions/github-script@v7
         env:
