@@ -9,7 +9,7 @@ function Get-Message {
 }
 
 function Get-PythonCommand {
-    foreach ($candidate in @("py", "python")) {
+    foreach ($candidate in @("python", "py")) {
         $commandInfo = Get-Command $candidate -ErrorAction SilentlyContinue
         if (-not $commandInfo) {
             continue
