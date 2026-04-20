@@ -1,0 +1,32 @@
+# Read/scan ignore rules for local tooling (ripgrep etc.)
+# Keep these aligned with .gitignore when possible.
+
+# Exclude noisy/generated artifacts
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.log
+*.db
+*.sqlite3
+tmp/
+temp/
+
+# Env files are excluded from general scans
+.env
+.env.*
+!.env.example
+
+# Always allow core policy/read files
+!.gitignore
+!.ignore
+!READ_FILES.md
+!AGENTS.md

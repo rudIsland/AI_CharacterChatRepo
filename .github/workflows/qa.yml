@@ -1,0 +1,57 @@
+name: QA
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    name: QA
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install QA dependencies
+        run: npm ci --prefix qa
+
+      - name: Install web dependencies
+        run: npm ci --prefix apps/client/web
+
+      - name: Install mobile dependencies
+        run: npm ci --prefix apps/client/mobile
+
+      - name: Install server dependencies
+        run: python -m pip install -r apps/server/requirements.txt
+
+      - name: Run QA lint
+        run: npm --prefix qa run lint
+
+      - name: Run QA typecheck
+        run: npm --prefix qa run typecheck
+
+      - name: Run QA unit test
+        run: npm --prefix qa run test:unit
+
+      - name: Run QA regression test
+        run: npm --prefix qa run test:regression

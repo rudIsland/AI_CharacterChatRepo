@@ -1,0 +1,19 @@
+{
+  "name": "ai-character-chat-qa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\run-lint.ps1",
+    "lint:eslint": "eslint -c .\\eslint.config.mjs",
+    "typecheck": "powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\run-typecheck.ps1",
+    "test:unit": "powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\run-test-unit.ps1",
+    "test:regression": "powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\run-test-regression.ps1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "eslint": "^9.37.0",
+    "globals": "^16.4.0",
+    "typescript-eslint": "^8.46.0"
+  }
+}
