@@ -11,6 +11,11 @@
  *   character_id: string;
  *   character_name: string;
  *   character_description: string;
+ *   character_gender: string;
+ *   character_age_range: string;
+ *   character_background: string;
+ *   character_personality: string;
+ *   character_image_url: string;
  * }} CharacterSummary
  */
 
@@ -29,6 +34,9 @@
  *   message_id: string;
  *   role: ChatRole;
  *   message_text: string;
+ *   input_token_count?: number | null;
+ *   output_token_count?: number | null;
+ *   total_token_count?: number | null;
  *   created_at: string;
  * }} ChatMessage
  */
@@ -38,6 +46,8 @@
  *   chat_session_id: string;
  *   user_message: ChatMessage;
  *   assistant_message: ChatMessage;
+ *   used_token_count: number;
+ *   token_limit_count: number;
  * }} ChatMessageCreateResponse
  */
 
@@ -59,6 +69,8 @@
  * @typedef {{
  *   chat_session_id: string;
  *   message_list: ChatMessage[];
+ *   used_token_count: number;
+ *   token_limit_count: number;
  * }} ChatMessageListResponse
  */
 
@@ -70,7 +82,16 @@ async function requestJson(apiBaseUrl, requestPath, requestInit) {
   const response = await fetch(`${apiBaseUrl}${requestPath}`, requestInit);
   if (!response.ok) {
     const responseText = await response.text();
-    throw new Error(responseText || `Request failed: ${response.status}`);
+    let responseMessage = responseText;
+    try {
+      const responseBody = JSON.parse(responseText);
+      if (typeof responseBody.detail === "string") {
+        responseMessage = responseBody.detail;
+      }
+    } catch (error) {
+      responseMessage = responseText;
+    }
+    throw new Error(responseMessage || `Request failed: ${response.status}`);
   }
   return await response.json();
 }
@@ -100,14 +121,14 @@ export function createChatApiClient(params) {
      */
     createChatSession(characterId, guestId, aiModelProvider) {
       return requestJson(apiBaseUrl, "/chat-sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          character_id: characterId,
-          guest_id: guestId,
-          ai_model_provider: aiModelProvider ?? "gpt",
-        }),
-      });
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            character_id: characterId,
+            guest_id: guestId,
+            ...(aiModelProvider ? { ai_model_provider: aiModelProvider } : {}),
+          }),
+        });
     },
 
     /**

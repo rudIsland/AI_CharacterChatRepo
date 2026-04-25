@@ -1,477 +1,287 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { AiModelProvider } from "@/features/chat/chat-types";
+import { formatCreatedAt } from "@/features/chat/chat-format";
+import { useChatScreenState } from "@/features/chat/chat-screen-state";
 
-import {
-  createChatMessage,
-  createChatSession,
-  fetchAiModelOptionList,
-  fetchCharacterList,
-  fetchChatMessageList,
-  listChatSessionByGuestId,
-} from "@/features/chat/chat-api-client";
-import {
-  AiModelOption,
-  AiModelProvider,
-  CharacterSummary,
-  ChatMessage,
-  ChatSessionSummary,
-} from "@/features/chat/chat-types";
-
-const guestIdStorageKey = "guest_id";
-const defaultAiModelOptionList: AiModelOption[] = [
-  {
-    ai_model_provider: "gpt",
-    ai_model_name: "gpt-4.1-mini",
-    ai_model_label: "GPT (gpt-4.1-mini)",
-  },
-  {
-    ai_model_provider: "gemini",
-    ai_model_name: "gemini-2.0-flash",
-    ai_model_label: "Gemini (gemini-2.0-flash)",
-  },
-  {
-    ai_model_provider: "local_ai",
-    ai_model_name: "llama3.1",
-    ai_model_label: "Local AI (llama3.1)",
-  },
-];
-
-type ChatMessageView = ChatMessage & {
-  isPending?: boolean;
-};
-
-function createGuestId(): string {
-  return `guest_${crypto.randomUUID().slice(0, 8)}`;
-}
-
-function getStoredGuestId(): string {
-  if (typeof window === "undefined") {
-    return "guest_local";
+function AiModelIcon({ provider }: { provider?: string }) {
+  if (provider === "gemini") {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+    );
   }
-
-  const foundGuestId = window.localStorage.getItem(guestIdStorageKey);
-  if (foundGuestId) {
-    return foundGuestId;
+  if (provider === "local_ai") {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
+    );
   }
-
-  const newGuestId = createGuestId();
-  window.localStorage.setItem(guestIdStorageKey, newGuestId);
-  return newGuestId;
+  // 기본 아이콘 (GPT 등)
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+  );
 }
 
-function formatCreatedAt(createdAt: string): string {
-  const date = new Date(createdAt);
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatSessionCreatedAt(createdAt: string): string {
-  const date = new Date(createdAt);
-  return date.toLocaleDateString([], {
-    month: "short",
-    day: "numeric",
-  });
+function formatTokenCount(tokenCount: number): string {
+  return tokenCount.toLocaleString("ko-KR");
 }
 
 export function ChatScreen() {
-  const [characterList, setCharacterList] = useState<CharacterSummary[]>([]);
-  const [selectedCharacterId, setSelectedCharacterId] = useState("");
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [chatSessionList, setChatSessionList] = useState<ChatSessionSummary[]>([]);
-  const [guestId, setGuestId] = useState("guest_local");
-  const [messageList, setMessageList] = useState<ChatMessageView[]>([]);
-  const [aiModelOptionList, setAiModelOptionList] = useState<AiModelOption[]>(
-    defaultAiModelOptionList
-  );
-  const [selectedAiModelProvider, setSelectedAiModelProvider] =
-    useState<AiModelProvider>("gpt");
-  const [userMessageText, setUserMessageText] = useState("");
-  const [isLoadingCharacterList, setIsLoadingCharacterList] = useState(true);
-  const [isLoadingSessionList, setIsLoadingSessionList] = useState(false);
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // 화면 동작은 useChatScreenState가 담당하고, 이 파일은 배치와 표시만 담당합니다.
+  const {
+    characterList,
+    selectedCharacter,
+    selectedCharacterImageUrl,
+    buildCharacterImageUrl,
+    selectedCharacterId,
+    messageList,
+    aiModelOptionList,
+    selectedAiModelProvider,
+    userMessageText,
+    isLoadingCharacterList,
+    isOpeningSession,
+    isSendingMessage,
+    usedTokenCount,
+    tokenLimitCount,
+    errorMessage,
+    setSelectedAiModelProvider,
+    setUserMessageText,
+    selectCharacterAction,
+    sendMessageAction,
+  } = useChatScreenState();
 
-  const selectedCharacter = useMemo(
-    () =>
-      characterList.find(
-        (character) => character.character_id === selectedCharacterId
-      ) ?? null,
-    [characterList, selectedCharacterId]
-  );
-  const aiModelLabelMap = useMemo<Record<AiModelProvider, string>>(() => {
-    const fallbackLabelMap: Record<AiModelProvider, string> = {
-      gpt: "GPT",
-      gemini: "Gemini",
-      local_ai: "Local AI",
-    };
-    for (const aiModelOption of aiModelOptionList) {
-      fallbackLabelMap[aiModelOption.ai_model_provider] = aiModelOption.ai_model_label;
-    }
-    return fallbackLabelMap;
-  }, [aiModelOptionList]);
+  const isChatInputDisabled =
+    !selectedCharacterId ||
+    !selectedAiModelProvider ||
+    isOpeningSession ||
+    isSendingMessage ||
+    usedTokenCount >= tokenLimitCount;
 
-  const formatAiModelProviderLabel = (aiModelProvider: AiModelProvider): string => {
-    return aiModelLabelMap[aiModelProvider] ?? aiModelProvider;
-  };
-
-  useEffect(() => {
-    const localGuestId = getStoredGuestId();
-    setGuestId(localGuestId);
-  }, []);
-
-  useEffect(() => {
-    const loadAiModelOptionList = async () => {
-      try {
-        const aiModelOptionListResponse = await fetchAiModelOptionList();
-        setAiModelOptionList(aiModelOptionListResponse.ai_model_option_list);
-      } catch (error) {
-        setAiModelOptionList(defaultAiModelOptionList);
-      }
-    };
-
-    void loadAiModelOptionList();
-  }, []);
-
-  useEffect(() => {
-    const loadCharacterList = async () => {
-      try {
-        setIsLoadingCharacterList(true);
-        const loadedCharacterList = await fetchCharacterList();
-        setCharacterList(loadedCharacterList);
-
-        if (loadedCharacterList.length > 0) {
-          setSelectedCharacterId(loadedCharacterList[0].character_id);
-        }
-      } catch (error) {
-        setErrorMessage("Failed to load characters. Check server status.");
-      } finally {
-        setIsLoadingCharacterList(false);
-      }
-    };
-
-    void loadCharacterList();
-  }, []);
-
-  const loadSessionListAction = async (
-    guestIdValue: string,
-    characterIdValue: string
-  ) => {
-    if (!characterIdValue) {
-      setChatSessionList([]);
-      return;
-    }
-
-    try {
-      setIsLoadingSessionList(true);
-      const guestSessionList = await listChatSessionByGuestId(guestIdValue);
-      const filteredSessionList = guestSessionList.filter(
-        (session) => session.character_id === characterIdValue
-      );
-      setChatSessionList(filteredSessionList);
-    } catch (error) {
-      setErrorMessage("Failed to load session list.");
-    } finally {
-      setIsLoadingSessionList(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadSessionListAction(guestId, selectedCharacterId);
-  }, [guestId, selectedCharacterId]);
-
-  const openSessionAction = async (chatSession: ChatSessionSummary) => {
-    try {
-      setErrorMessage(null);
-      setActiveSessionId(chatSession.chat_session_id);
-      setSelectedAiModelProvider(chatSession.ai_model_provider);
-      const loadedMessages = await fetchChatMessageList(chatSession.chat_session_id);
-      setMessageList(loadedMessages.message_list);
-    } catch (error) {
-      setErrorMessage("Failed to load messages.");
-    }
-  };
-
-  const startSessionAction = async () => {
-    if (!selectedCharacterId) {
-      return;
-    }
-
-    try {
-      setErrorMessage(null);
-      const createdSession = await createChatSession(
-        selectedCharacterId,
-        guestId,
-        selectedAiModelProvider
-      );
-      setActiveSessionId(createdSession.chat_session_id);
-      setSelectedAiModelProvider(createdSession.ai_model_provider);
-
-      const loadedMessages = await fetchChatMessageList(
-        createdSession.chat_session_id
-      );
-      setMessageList(loadedMessages.message_list);
-      await loadSessionListAction(guestId, selectedCharacterId);
-    } catch (error) {
-      setErrorMessage("Failed to start chat session.");
-    }
-  };
-
-  const selectCharacterAction = (characterId: string) => {
-    setSelectedCharacterId(characterId);
-    setActiveSessionId(null);
-    setMessageList([]);
-    setErrorMessage(null);
-  };
-
-  const sendMessageAction = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const cleanMessageText = userMessageText.trim();
-    if (!cleanMessageText || !selectedCharacterId) {
-      return;
-    }
-
-    try {
-      setIsSendingMessage(true);
-      setErrorMessage(null);
-
-      const optimisticCreatedAt = new Date().toISOString();
-      const optimisticUserMessageId = `temp-user-${Date.now()}`;
-      const optimisticAssistantMessageId = `temp-assistant-${Date.now()}`;
-
-      const optimisticUserMessage: ChatMessageView = {
-        message_id: optimisticUserMessageId,
-        role: "user",
-        message_text: cleanMessageText,
-        created_at: optimisticCreatedAt,
-      };
-      const optimisticAssistantMessage: ChatMessageView = {
-        message_id: optimisticAssistantMessageId,
-        role: "assistant",
-        message_text: "...",
-        created_at: optimisticCreatedAt,
-        isPending: true,
-      };
-      setMessageList((previousMessageList) => [
-        ...previousMessageList,
-        optimisticUserMessage,
-        optimisticAssistantMessage,
-      ]);
-      setUserMessageText("");
-
-      let currentSessionId = activeSessionId;
-      if (!currentSessionId) {
-        const createdSession = await createChatSession(
-          selectedCharacterId,
-          guestId,
-          selectedAiModelProvider
-        );
-        currentSessionId = createdSession.chat_session_id;
-        setActiveSessionId(currentSessionId);
-        setSelectedAiModelProvider(createdSession.ai_model_provider);
-        await loadSessionListAction(guestId, selectedCharacterId);
-      }
-
-      const createdMessage = await createChatMessage(
-        currentSessionId,
-        cleanMessageText,
-        selectedAiModelProvider
-      );
-      setMessageList((previousMessageList) =>
-        previousMessageList.map((message) => {
-          if (message.message_id === optimisticUserMessageId) {
-            return createdMessage.user_message;
-          }
-          if (message.message_id === optimisticAssistantMessageId) {
-            return createdMessage.assistant_message;
-          }
-          return message;
-        })
-      );
-    } catch (error) {
-      setErrorMessage("Failed to send message. Try again.");
-      setMessageList((previousMessageList) =>
-        previousMessageList.map((message) => {
-          if (message.isPending) {
-            return {
-              ...message,
-              message_text: "Reply failed. Please try again.",
-              isPending: false,
-            };
-          }
-          return message;
-        })
-      );
-    } finally {
-      setIsSendingMessage(false);
-    }
-  };
+  const tokenUsagePercent =
+    tokenLimitCount > 0
+      ? Math.min(100, Math.round((usedTokenCount / tokenLimitCount) * 100))
+      : 0;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#dff3ef,_transparent_55%),radial-gradient(circle_at_bottom_right,_#dbeafe,_transparent_45%),#f4f7fb] px-4 py-8 sm:px-8">
-      <section className="mx-auto grid w-full max-w-6xl gap-4 rounded-3xl border border-slate-200 bg-card p-4 shadow-panel sm:grid-cols-[280px_1fr] sm:p-6">
-        <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <h1 className="text-lg font-semibold text-slate-900">Character Chat</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Stack: TypeScript + React + Next.js + Tailwind
-          </p>
+    <main className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,_#1e293b,_transparent_55%),radial-gradient(circle_at_bottom_right,_#0f172a,_transparent_45%),#020617] px-3 py-3 sm:px-4">
+      <section className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-panel sm:p-4">
 
-          <div className="mt-4 space-y-2">
-            {isLoadingCharacterList && (
-              <p className="text-sm text-slate-500">Loading characters...</p>
-            )}
+        {/* 위쪽 영역: 캐릭터가 늘어나도 가로 스크롤로 선택할 수 있습니다. */}
+        <section className="shrink-0 rounded-2xl border border-slate-800 bg-slate-800/50 p-2">
+          {isLoadingCharacterList && (
+            <p className="text-sm text-slate-400">캐릭터를 불러오는 중입니다...</p>
+          )}
 
-            {!isLoadingCharacterList &&
-              characterList.map((character) => (
-                <button
-                  key={character.character_id}
-                  type="button"
-                  className={`w-full rounded-xl border px-3 py-2 text-left transition ${
-                    character.character_id === selectedCharacterId
-                      ? "border-accent bg-emerald-50 text-slate-900"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                  }`}
-                  onClick={() => selectCharacterAction(character.character_id)}
-                >
-                  <p className="font-medium">{character.character_name}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {character.character_description}
-                  </p>
-                </button>
-              ))}
-          </div>
-
-          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-2">
-            <p className="px-1 text-xs font-semibold text-slate-600">Session List</p>
-            {isLoadingSessionList && (
-              <p className="px-1 py-2 text-xs text-slate-500">Loading sessions...</p>
-            )}
-            {!isLoadingSessionList && chatSessionList.length === 0 && (
-              <p className="px-1 py-2 text-xs text-slate-500">
-                No saved session for this character.
-              </p>
-            )}
-            <div className="mt-1 max-h-36 space-y-1 overflow-y-auto">
-              {chatSessionList.map((session, index) => {
-                const isActive = activeSessionId === session.chat_session_id;
+          {!isLoadingCharacterList && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {characterList.map((character) => {
+                const isSelected = character.character_id === selectedCharacterId;
                 return (
                   <button
-                    key={session.chat_session_id}
+                    key={character.character_id}
                     type="button"
-                    className={`w-full rounded-lg border px-2 py-2 text-left text-xs transition ${
-                      isActive
-                        ? "border-accent bg-emerald-50 text-slate-900"
-                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300"
+                    className={`flex min-w-48 items-center gap-2 rounded-xl border p-2 text-left transition ${
+                      isSelected
+                        ? "border-emerald-500 bg-emerald-950/30 text-white"
+                        : "border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 hover:bg-slate-700"
                     }`}
-                    onClick={() => void openSessionAction(session)}
+                    onClick={() => selectCharacterAction(character.character_id)}
                   >
-                    <p className="font-semibold">
-                      Session {chatSessionList.length - index}
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      {formatSessionCreatedAt(session.created_at)}
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      {formatAiModelProviderLabel(session.ai_model_provider)}
-                    </p>
+                    <img
+                      src={buildCharacterImageUrl(character)}
+                      alt={`${character.character_name} 초상화`}
+                      className="h-10 w-10 shrink-0 rounded-lg border border-slate-700 bg-slate-900 object-cover"
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-medium">
+                        {character.character_name}
+                      </span>
+                      <span className="mt-1 line-clamp-2 block text-xs text-slate-400">
+                        {character.character_description}
+                      </span>
+                      <span className="mt-1 block text-[11px] text-slate-500">
+                        {character.character_gender} · {character.character_age_range}
+                      </span>
+                    </span>
                   </button>
                 );
               })}
             </div>
-          </div>
+          )}
+        </section>
 
-          <button
-            type="button"
-            className="mt-4 w-full rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-            onClick={() => void startSessionAction()}
-            disabled={!selectedCharacterId}
-          >
-            Start New Session
-          </button>
-        </aside>
+        <section className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
+          {/* 왼쪽 영역: 선택한 캐릭터의 이미지와 설정 정보를 보여줍니다. */}
+          <aside className="min-h-0 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-800/50 p-3">
+            {selectedCharacter && selectedCharacterImageUrl ? (
+              <div className="flex min-h-0 flex-col gap-3">
+                <img
+                  src={selectedCharacterImageUrl}
+                  alt={`${selectedCharacter.character_name} 초상화`}
+                  className="aspect-square w-full max-h-[34vh] rounded-xl border border-slate-700 bg-slate-900 object-cover"
+                />
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <header className="border-b border-slate-200 pb-3">
-            <h2 className="text-lg font-semibold text-slate-900">
-              {selectedCharacter?.character_name ?? "No Character Selected"}
-            </h2>
-            <p className="text-sm text-slate-600">
-              {selectedCharacter?.character_description ??
-                "Select a character from the left panel."}
-            </p>
-          </header>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-500">
+                    캐릭터
+                  </p>
+                  <h2 className="mt-1 text-lg font-semibold text-white">
+                    {selectedCharacter.character_name}
+                  </h2>
+                  <p className="mt-1 text-sm leading-5 text-slate-300">
+                    {selectedCharacter.character_description}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-slate-500">
+                    {selectedCharacter.character_gender} · {selectedCharacter.character_age_range}
+                  </p>
+                </div>
 
-          <div className="chat-scroll mt-3 h-[460px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-            {messageList.length === 0 && (
-              <p className="text-sm text-slate-500">
-                Start a session and send your first message.
+                <div className="rounded-xl border border-slate-700 bg-slate-800 p-2.5">
+                  <p className="text-xs font-semibold text-slate-400">배경</p>
+                  <p className="mt-1 text-sm leading-5 text-slate-300">
+                    {selectedCharacter.character_background}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-slate-700 bg-slate-800 p-2.5">
+                  <p className="text-xs font-semibold text-slate-400">성격</p>
+                  <p className="mt-1 text-sm leading-5 text-slate-300">
+                    {selectedCharacter.character_personality}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">캐릭터를 선택해 주세요.</p>
+            )}
+          </aside>
+
+          {/* 오른쪽 영역: 선택한 캐릭터와 이어서 대화하는 채팅창입니다. */}
+          <section className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-slate-900 p-3">
+            <header className="shrink-0 border-b border-slate-800 pb-2">
+              <h2 className="text-lg font-semibold text-white">
+                {selectedCharacter?.character_name ?? "선택된 캐릭터 없음"}
+              </h2>
+              <p className="text-sm text-slate-400">
+                {isOpeningSession
+                  ? "이전 메시지를 불러오는 중입니다..."
+                  : "마지막 대화에서 이어서 이야기해 보세요."}
+              </p>
+            </header>
+
+            <div className="relative mt-3 min-h-0 flex-1">
+              <div className="chat-scroll flex h-full min-h-0 flex-col overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/50 p-3 pb-9 shadow-inner">
+                {!isOpeningSession && messageList.length === 0 && (
+                  <div className="flex h-full flex-col items-center justify-center space-y-3 opacity-60">
+                    <div
+                      className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-800"
+                      aria-hidden="true"
+                    />
+                    <p className="text-sm font-medium text-slate-400">
+                      이 캐릭터에게 첫 메시지를 보내 보세요.
+                    </p>
+                  </div>
+                )}
+
+                {isOpeningSession && (
+                  <p className="text-sm text-slate-400">대화를 불러오는 중입니다...</p>
+                )}
+
+                <div className="flex flex-col space-y-3">
+                  {/* user 메시지는 오른쪽, assistant 메시지는 왼쪽에 배치합니다. */}
+                  {messageList.map((message) => {
+                    return (
+                      <article
+                        key={message.message_id}
+                        className={`flex w-fit max-w-[82%] flex-col rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed shadow-sm ${
+                          message.role === "user"
+                            ? "ml-auto rounded-br-sm bg-emerald-600 text-white"
+                            : "mr-auto rounded-bl-sm border border-slate-700 bg-slate-800 text-slate-200"
+                        } ${message.isPending ? "animate-pulse" : ""}`}
+                      >
+                        <p className="whitespace-pre-wrap break-words">
+                          {message.message_text}
+                        </p>
+                        <p className="mt-1 text-[11px] font-medium text-slate-400">
+                          {message.isPending
+                            ? "답변 대기 중..."
+                            : formatCreatedAt(message.created_at)}
+                        </p>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pointer-events-none absolute bottom-2 right-3 z-10 w-44 rounded-md border border-slate-700 bg-slate-950/95 px-2 py-1.5 text-[11px] font-medium text-slate-400 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span>토큰</span>
+                  <span>
+                    {formatTokenCount(usedTokenCount)} / {formatTokenCount(tokenLimitCount)}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-[width]"
+                    style={{ width: `${tokenUsagePercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <form
+              className="mt-3 flex shrink-0 flex-row items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void sendMessageAction();
+              }}
+            >
+              {/* AI 모델 목록을 아이콘 형태의 선택 버튼으로 보여줍니다. */}
+              <div
+                className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-300 transition hover:bg-slate-700 focus-within:ring-2 focus-within:ring-emerald-500"
+                title="AI 모델 선택"
+              >
+                <span className="pointer-events-none absolute flex items-center justify-center">
+                  <AiModelIcon provider={selectedAiModelProvider} />
+                </span>
+                <select
+                  className="h-full w-full cursor-pointer appearance-none bg-transparent text-transparent outline-none [&>option]:text-slate-900"
+                  value={selectedAiModelProvider}
+                  onChange={(event) =>
+                    setSelectedAiModelProvider(event.target.value as AiModelProvider)
+                  }
+                  disabled={isOpeningSession || isSendingMessage || aiModelOptionList.length === 0}
+                >
+                  {aiModelOptionList.map((aiModelOption) => (
+                    <option key={aiModelOption.ai_model_provider} value={aiModelOption.ai_model_provider}>
+                      {aiModelOption.ai_model_label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative flex-1">
+                <input
+                  className="h-10 w-full rounded-full border border-slate-700 bg-slate-800 pl-4 pr-20 text-sm text-white outline-none ring-emerald-500 transition focus:bg-slate-700 focus:ring-2 placeholder:text-slate-500"
+                  placeholder="메시지를 입력하세요..."
+                  value={userMessageText}
+                  onChange={(event) => setUserMessageText(event.target.value)}
+                  disabled={isChatInputDisabled}
+                />
+                <button
+                  type="submit"
+                  className="absolute bottom-1 right-1 top-1 rounded-full bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
+                  disabled={isChatInputDisabled}
+                >
+                  {isSendingMessage ? "..." : "보내기"}
+                </button>
+              </div>
+            </form>
+
+            {errorMessage && (
+              <p className="mt-2 rounded-lg border border-rose-900 bg-rose-950 px-3 py-2 text-sm text-rose-300">
+                {errorMessage}
               </p>
             )}
-
-            <div className="space-y-3">
-              {messageList.map((message) => (
-                <article
-                  key={message.message_id}
-                  className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
-                    message.role === "user"
-                      ? "ml-auto bg-slate-900 text-white"
-                      : "mr-auto border border-emerald-200 bg-emerald-50 text-slate-800"
-                  } ${message.isPending ? "animate-pulse" : ""}`}
-                >
-                  <p>{message.message_text}</p>
-                  <p
-                    className={`mt-1 text-[11px] ${
-                      message.role === "user" ? "text-slate-300" : "text-slate-500"
-                    }`}
-                  >
-                    {message.isPending ? "waiting..." : formatCreatedAt(message.created_at)}
-                  </p>
-                </article>
-              ))}
-            </div>
-          </div>
-
-          <form
-            className="mt-3 flex flex-col gap-2 sm:flex-row"
-            onSubmit={(event) => void sendMessageAction(event)}
-          >
-            <select
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-accent transition focus:ring-2 sm:w-60"
-              value={selectedAiModelProvider}
-              onChange={(event) =>
-                setSelectedAiModelProvider(event.target.value as AiModelProvider)
-              }
-              disabled={!selectedCharacterId || isSendingMessage}
-            >
-              {aiModelOptionList.map((aiModelOption) => (
-                <option
-                  key={aiModelOption.ai_model_provider}
-                  value={aiModelOption.ai_model_provider}
-                >
-                  {aiModelOption.ai_model_label}
-                </option>
-              ))}
-            </select>
-            <input
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-accent transition focus:ring-2"
-              placeholder="Type your message..."
-              value={userMessageText}
-              onChange={(event) => setUserMessageText(event.target.value)}
-              disabled={!selectedCharacterId || isSendingMessage}
-            />
-            <button
-              type="submit"
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
-              disabled={!selectedCharacterId || isSendingMessage}
-            >
-              {isSendingMessage ? "Sending..." : "Send"}
-            </button>
-          </form>
-
-          {errorMessage && (
-            <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              {errorMessage}
-            </p>
-          )}
+          </section>
         </section>
       </section>
     </main>

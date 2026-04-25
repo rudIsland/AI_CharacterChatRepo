@@ -8,14 +8,18 @@ import {
   createChatApiClient,
 } from "@ai-character-chat/shared";
 
-const defaultApiBaseUrl = "http://127.0.0.1:8000";
-
-function getApiBaseUrl(): string {
-  return process.env.EXPO_PUBLIC_API_BASE_URL ?? defaultApiBaseUrl;
+function getRequiredApiBaseUrl(): string {
+  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  if (!apiBaseUrl) {
+    throw new Error(
+      "EXPO_PUBLIC_API_BASE_URL is required. Set it in apps/client/mobile/.env."
+    );
+  }
+  return apiBaseUrl;
 }
 
 const chatApiClient = createChatApiClient({
-  apiBaseUrl: getApiBaseUrl(),
+  apiBaseUrl: getRequiredApiBaseUrl(),
 });
 
 export async function fetchAiModelOptionList(): Promise<AiModelOptionListResponse> {
