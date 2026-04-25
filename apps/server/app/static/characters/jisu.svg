@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" role="img" aria-labelledby="title desc">
+  <title id="title">Jisu character portrait</title>
+  <desc id="desc">A tense job seeker character portrait.</desc>
+  <rect width="360" height="360" rx="48" fill="#f8fafc"/>
+  <path d="M70 82h220c18 0 32 14 32 32v178c0 18-14 32-32 32H70c-18 0-32-14-32-32V114c0-18 14-32 32-32z" fill="#e2e8f0"/>
+  <path d="M94 118h172" stroke="#94a3b8" stroke-width="10" stroke-linecap="round"/>
+  <path d="M94 150h132" stroke="#cbd5e1" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="180" cy="166" r="78" fill="#f1c7a8"/>
+  <path d="M96 154c7-60 45-95 97-93 48 2 78 36 80 90-29-20-62-24-98-12-31 10-54 14-79 15z" fill="#20232a"/>
+  <path d="M116 135c18-44 54-70 99-63 29 5 51 21 64 45-42-13-82-6-122 18-15 9-28 12-41 0z" fill="#111827"/>
+  <path d="M140 164l30 6" stroke="#1f2937" stroke-width="7" stroke-linecap="round"/>
+  <path d="M220 164l-30 6" stroke="#1f2937" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="150" cy="178" r="7" fill="#111827"/>
+  <circle cx="210" cy="178" r="7" fill="#111827"/>
+  <path d="M164 215c13-7 27-7 40 0" fill="none" stroke="#7f1d1d" stroke-width="7" stroke-linecap="round"/>
+  <path d="M108 336c10-66 40-101 72-101s62 35 72 101H108z" fill="#334155"/>
+  <path d="M139 245h82l-41 58-41-58z" fill="#ffffff"/>
+  <path d="M94 266h51l35 70H92c-12 0-22-10-22-22v-18c0-17 10-30 24-30z" fill="#475569"/>
+  <path d="M215 266h51c14 0 24 13 24 30v18c0 12-10 22-22 22h-88l35-70z" fill="#475569"/>
+  <rect x="246" y="42" width="54" height="68" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="6"/>
+  <path d="M258 62h30M258 78h22M258 94h26" stroke="#64748b" stroke-width="5" stroke-linecap="round"/>
+  <path d="M61 64l18 18M79 64L61 82" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
+</svg>

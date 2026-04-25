@@ -1,0 +1,46 @@
+name: AI PR Reviewer
+
+# PR이 열리거나(opened) 새로운 커밋이 푸시될 때(synchronize) 워크플로우를 실행합니다.
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    
+    # GITHUB_TOKEN이 PR에 댓글을 달 수 있도록 쓰기 권한을 부여합니다.
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      # 1. 현재 리포지토리의 코드를 가져옵니다.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. 파이썬 스크립트를 실행하기 위해 파이썬 환경을 설정합니다.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. AI API 호출과 HTTP 통신에 필요한 파이썬 라이브러리를 설치합니다.
+      - name: Install dependencies
+        run: pip install requests google-generativeai
+
+      # 4. GitHub CLI(gh)를 사용하여 PR의 변경 사항(Diff)을 추출하고 파일로 저장합니다.
+      - name: Get PR Diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr diff ${{ github.event.pull_request.number }} > pr_diff.txt
+
+      # 5. 추출한 Diff를 바탕으로 AI 리뷰 파이썬 스크립트를 실행합니다.
+      - name: Run AI Review Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # GitHub Repository Secrets에 추가해야 합니다.
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: python .github/scripts/pr_reviewer.py
