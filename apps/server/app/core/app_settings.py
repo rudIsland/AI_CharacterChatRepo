@@ -9,6 +9,10 @@ class AppSettings(BaseSettings):
         default="AI Character Chat API",
         description="서버 이름입니다. 헬스 체크 응답에서 서비스 식별용으로 사용합니다.",
     )
+    admin_api_key: str | None = Field(
+        default=None,
+        description="관리자용 사용량 조회 API를 호출할 때 사용할 키입니다. 없으면 관리자 API를 비활성화합니다.",
+    )
     openai_api_key: str | None = Field(
         default=None,
         description="OpenAI 호출에 사용할 API 키입니다. 없으면 OpenAI 응답 생성을 건너뜁니다.",

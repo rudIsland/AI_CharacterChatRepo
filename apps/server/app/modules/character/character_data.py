@@ -1,7 +1,6 @@
 from app.modules.character.character_schema import CharacterDetail, CharacterProfile, CharacterSummary
 
-# 현재 캐릭터 데이터는 서버 코드에서 관리합니다.
-# 나중에 캐릭터가 많아지면 이 부분을 DB나 JSON 파일로 옮기면 됩니다.
+# 포트폴리오 데모에서는 캐릭터 데이터를 코드에 고정해서 단순하게 관리합니다.
 sample_character_profile_list = [
     CharacterProfile(
         character_id="jisu",

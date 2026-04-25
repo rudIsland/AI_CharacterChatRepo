@@ -43,7 +43,7 @@ class StoredChatMessage:
 
 class InMemoryChatStore:
     def __init__(self) -> None:
-        # 세션 ID를 key로 사용해 세션과 메시지를 메모리에 보관합니다.
+        # 포트폴리오 데모용 임시 저장소입니다. 서버가 재시작되면 대화는 초기화됩니다.
         self._chat_session_map: dict[str, StoredChatSession] = {}
         # 동시에 들어오는 저장 요청이 데이터를 꼬이게 만들지 않도록 잠급니다.
         self._write_lock = Lock()
