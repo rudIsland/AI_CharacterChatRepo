@@ -9,24 +9,43 @@ from app.modules.chat.chat_schema import AiModelProvider
 
 @dataclass
 class StoredChatSession:
+    # 클라이언트가 특정 대화방을 다시 열 때 사용하는 고유 ID입니다.
     chat_session_id: str
+    # 이 세션에서 대화하는 캐릭터의 고유 ID입니다.
     character_id: str
+    # 로그인 전에도 같은 사용자를 구분하기 위한 임시 사용자 ID입니다.
     guest_id: str
+    # 이 세션에서 마지막으로 선택한 AI 제공자입니다.
     ai_model_provider: AiModelProvider
+    # 세션이 처음 만들어진 시간입니다.
     created_at: datetime
+    # 이 세션에 속한 사용자와 AI 메시지를 순서대로 저장합니다.
     message_list: list["StoredChatMessage"] = field(default_factory=list)
+
 
 @dataclass
 class StoredChatMessage:
+    # 메시지 한 개를 구분하기 위한 고유 ID입니다.
     message_id: str
+    # 메시지를 보낸 주체입니다. user는 사용자, assistant는 AI입니다.
     role: Literal["user", "assistant"]
+    # 채팅창에 보여줄 실제 메시지 내용입니다.
     message_text: str
-    created_at: datetime
+    # AI 응답 생성에 사용된 입력 토큰 수입니다. 사용자 메시지는 None입니다.
+    input_token_count: int | None = None
+    # AI가 생성한 출력 토큰 수입니다. 사용자 메시지는 None입니다.
+    output_token_count: int | None = None
+    # 입력과 출력을 합친 전체 토큰 수입니다. 사용자 메시지는 None입니다.
+    total_token_count: int | None = None
+    # 메시지가 저장된 시간입니다.
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class InMemoryChatStore:
     def __init__(self) -> None:
+        # 세션 ID를 key로 사용해 세션과 메시지를 메모리에 보관합니다.
         self._chat_session_map: dict[str, StoredChatSession] = {}
+        # 동시에 들어오는 저장 요청이 데이터를 꼬이게 만들지 않도록 잠급니다.
         self._write_lock = Lock()
 
     def create_chat_session(
@@ -45,6 +64,19 @@ class InMemoryChatStore:
             )
             self._chat_session_map[chat_session.chat_session_id] = chat_session
             return chat_session
+
+    def find_chat_session_by_guest_id_and_character_id(
+        self,
+        guest_id: str,
+        character_id: str,
+    ) -> StoredChatSession | None:
+        for chat_session in self._chat_session_map.values():
+            if (
+                chat_session.guest_id == guest_id
+                and chat_session.character_id == character_id
+            ):
+                return chat_session
+        return None
 
     def update_chat_session_ai_model_provider(
         self,
@@ -80,6 +112,9 @@ class InMemoryChatStore:
         chat_session_id: str,
         role: Literal["user", "assistant"],
         message_text: str,
+        input_token_count: int | None = None,
+        output_token_count: int | None = None,
+        total_token_count: int | None = None,
     ) -> StoredChatMessage:
         with self._write_lock:
             chat_session = self._chat_session_map[chat_session_id]
@@ -87,6 +122,9 @@ class InMemoryChatStore:
                 message_id=str(uuid4()),
                 role=role,
                 message_text=message_text,
+                input_token_count=input_token_count,
+                output_token_count=output_token_count,
+                total_token_count=total_token_count,
                 created_at=datetime.now(timezone.utc),
             )
             chat_session.message_list.append(chat_message)

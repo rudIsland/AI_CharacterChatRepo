@@ -36,17 +36,17 @@ def get_ai_model_option_list() -> AiModelOptionListResponse:
         AiModelOption(
             ai_model_provider="gpt",
             ai_model_name=app_settings.openai_model_name,
-            ai_model_label=f"GPT ({app_settings.openai_model_name})",
+            ai_model_label=f"GPT 모델 ({app_settings.openai_model_name})",
         ),
         AiModelOption(
             ai_model_provider="gemini",
             ai_model_name=app_settings.gemini_model_name,
-            ai_model_label=f"Gemini ({app_settings.gemini_model_name})",
+            ai_model_label=f"제미나이 ({app_settings.gemini_model_name})",
         ),
         AiModelOption(
             ai_model_provider="local_ai",
             ai_model_name=app_settings.local_ai_model_name,
-            ai_model_label=f"Local AI ({app_settings.local_ai_model_name})",
+            ai_model_label=f"로컬 AI ({app_settings.local_ai_model_name})",
         ),
     ]
     return AiModelOptionListResponse(ai_model_option_list=ai_model_option_list)

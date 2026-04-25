@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" role="img" aria-labelledby="title desc">
+  <title id="title">Milo character portrait</title>
+  <desc id="desc">A calm barista character portrait.</desc>
+  <rect width="360" height="360" rx="48" fill="#ecfdf5"/>
+  <circle cx="180" cy="150" r="82" fill="#f8d7b0"/>
+  <path d="M98 150c10-58 48-92 99-86 45 6 75 41 74 89-30-23-68-28-107-15-24 8-45 12-66 12z" fill="#3f2f2a"/>
+  <circle cx="146" cy="158" r="8" fill="#1f2937"/>
+  <circle cx="214" cy="158" r="8" fill="#1f2937"/>
+  <path d="M156 199c16 14 36 14 52 0" fill="none" stroke="#8a4b3a" stroke-width="8" stroke-linecap="round"/>
+  <path d="M104 335c9-66 40-103 76-103s67 37 76 103H104z" fill="#0f766e"/>
+  <path d="M135 241h90l-45 62-45-62z" fill="#ffffff" opacity="0.95"/>
+  <path d="M239 255h50c19 0 35 16 35 35s-16 35-35 35h-50v-70z" fill="#ffffff"/>
+  <path d="M256 277h29c8 0 14 6 14 14s-6 14-14 14h-29v-28z" fill="#ecfdf5"/>
+  <rect x="42" y="267" width="214" height="58" rx="19" fill="#ffffff"/>
+  <path d="M74 267c0-18 15-32 32-32h82c18 0 32 14 32 32" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+</svg>

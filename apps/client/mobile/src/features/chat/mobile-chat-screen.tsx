@@ -25,24 +25,6 @@ import {
   ChatSessionSummary,
 } from "./mobile-chat-types";
 
-const defaultAiModelOptionList: AiModelOption[] = [
-  {
-    ai_model_provider: "gpt",
-    ai_model_name: "gpt-4.1-mini",
-    ai_model_label: "GPT (gpt-4.1-mini)",
-  },
-  {
-    ai_model_provider: "gemini",
-    ai_model_name: "gemini-2.0-flash",
-    ai_model_label: "Gemini (gemini-2.0-flash)",
-  },
-  {
-    ai_model_provider: "local_ai",
-    ai_model_name: "llama3.1",
-    ai_model_label: "Local AI (llama3.1)",
-  },
-];
-
 function createGuestId(): string {
   return `guest_mobile_${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -60,6 +42,28 @@ function formatSessionCreatedAt(createdAt: string): string {
   });
 }
 
+function formatTokenUsageText(message: ChatMessage): string {
+  if (
+    message.input_token_count == null &&
+    message.output_token_count == null &&
+    message.total_token_count == null
+  ) {
+    return "";
+  }
+
+  const tokenTextList: string[] = [];
+  if (message.input_token_count != null) {
+    tokenTextList.push(`입력 ${message.input_token_count}`);
+  }
+  if (message.output_token_count != null) {
+    tokenTextList.push(`출력 ${message.output_token_count}`);
+  }
+  if (message.total_token_count != null) {
+    tokenTextList.push(`합계 ${message.total_token_count}`);
+  }
+  return tokenTextList.join(" · ");
+}
+
 export function MobileChatScreen() {
   const [guestId] = useState(createGuestId);
   const [characterList, setCharacterList] = useState<CharacterSummary[]>([]);
@@ -67,11 +71,9 @@ export function MobileChatScreen() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [chatSessionList, setChatSessionList] = useState<ChatSessionSummary[]>([]);
   const [messageList, setMessageList] = useState<ChatMessage[]>([]);
-  const [aiModelOptionList, setAiModelOptionList] = useState<AiModelOption[]>(
-    defaultAiModelOptionList
-  );
+  const [aiModelOptionList, setAiModelOptionList] = useState<AiModelOption[]>([]);
   const [selectedAiModelProvider, setSelectedAiModelProvider] =
-    useState<AiModelProvider>("gpt");
+    useState<AiModelProvider | "">("");
   const [userMessageText, setUserMessageText] = useState("");
   const [isLoadingCharacterList, setIsLoadingCharacterList] = useState(false);
   const [isLoadingSessionList, setIsLoadingSessionList] = useState(false);
@@ -86,11 +88,7 @@ export function MobileChatScreen() {
     [characterList, selectedCharacterId]
   );
   const aiModelLabelMap = useMemo<Record<AiModelProvider, string>>(() => {
-    const fallbackLabelMap: Record<AiModelProvider, string> = {
-      gpt: "GPT",
-      gemini: "Gemini",
-      local_ai: "Local AI",
-    };
+    const fallbackLabelMap = {} as Record<AiModelProvider, string>;
     for (const aiModelOption of aiModelOptionList) {
       fallbackLabelMap[aiModelOption.ai_model_provider] = aiModelOption.ai_model_label;
     }
@@ -105,9 +103,25 @@ export function MobileChatScreen() {
     const loadAiModelOptionList = async () => {
       try {
         const aiModelOptionListResponse = await fetchAiModelOptionList();
-        setAiModelOptionList(aiModelOptionListResponse.ai_model_option_list);
+        const loadedAiModelOptionList =
+          aiModelOptionListResponse.ai_model_option_list;
+        setAiModelOptionList(loadedAiModelOptionList);
+        setSelectedAiModelProvider((currentProvider) => {
+          if (
+            currentProvider &&
+            loadedAiModelOptionList.some(
+              (aiModelOption) =>
+                aiModelOption.ai_model_provider === currentProvider
+            )
+          ) {
+            return currentProvider;
+          }
+          return loadedAiModelOptionList[0]?.ai_model_provider ?? "";
+        });
       } catch (error) {
-        setAiModelOptionList(defaultAiModelOptionList);
+        setAiModelOptionList([]);
+        setSelectedAiModelProvider("");
+        setErrorMessage("AI 모델 목록을 불러오지 못했습니다.");
       }
     };
 
@@ -124,7 +138,7 @@ export function MobileChatScreen() {
           setSelectedCharacterId(loadedCharacterList[0].character_id);
         }
       } catch (error) {
-        setErrorMessage("Failed to load character list.");
+        setErrorMessage("캐릭터 목록을 불러오지 못했습니다.");
       } finally {
         setIsLoadingCharacterList(false);
       }
@@ -150,7 +164,7 @@ export function MobileChatScreen() {
       );
       setChatSessionList(filteredSessionList);
     } catch (error) {
-      setErrorMessage("Failed to load session list.");
+      setErrorMessage("대화 목록을 불러오지 못했습니다.");
     } finally {
       setIsLoadingSessionList(false);
     }
@@ -175,12 +189,12 @@ export function MobileChatScreen() {
       const loadedMessages = await fetchChatMessageList(chatSession.chat_session_id);
       setMessageList(loadedMessages.message_list);
     } catch (error) {
-      setErrorMessage("Failed to load messages.");
+      setErrorMessage("메시지를 불러오지 못했습니다.");
     }
   };
 
   const startSessionAction = async () => {
-    if (!selectedCharacterId) {
+    if (!selectedCharacterId || !selectedAiModelProvider) {
       return;
     }
 
@@ -200,13 +214,13 @@ export function MobileChatScreen() {
       setMessageList(loadedMessages.message_list);
       await loadSessionListAction(guestId, selectedCharacterId);
     } catch (error) {
-      setErrorMessage("Failed to start chat session.");
+      setErrorMessage("대화를 시작하지 못했습니다.");
     }
   };
 
   const sendMessageAction = async () => {
     const cleanMessageText = userMessageText.trim();
-    if (!cleanMessageText || !selectedCharacterId) {
+    if (!cleanMessageText || !selectedCharacterId || !selectedAiModelProvider) {
       return;
     }
 
@@ -250,7 +264,7 @@ export function MobileChatScreen() {
       }
 
       if (!sessionId) {
-        throw new Error("Chat session id was not created.");
+        throw new Error("채팅 세션 ID가 생성되지 않았습니다.");
       }
 
       const createdMessage = await createChatMessage(
@@ -270,13 +284,13 @@ export function MobileChatScreen() {
         })
       );
     } catch (error) {
-      setErrorMessage("Failed to send message.");
+      setErrorMessage("메시지를 보내지 못했습니다.");
       setMessageList((previousMessageList) =>
         previousMessageList.map((message) => {
           if (message.message_id === optimisticAssistantMessageId) {
             return {
               ...message,
-              message_text: "Reply failed. Please try again.",
+              message_text: "답변을 받지 못했습니다. 다시 시도해 주세요.",
             };
           }
           return message;
@@ -290,8 +304,8 @@ export function MobileChatScreen() {
   return (
     <View style={styles.screenContainer}>
       <View style={styles.characterPanel}>
-        <Text style={styles.titleText}>AI Character Chat</Text>
-        <Text style={styles.helperText}>Guest ID: {guestId}</Text>
+        <Text style={styles.titleText}>AI 캐릭터 채팅</Text>
+        <Text style={styles.helperText}>게스트 ID: {guestId}</Text>
 
         {isLoadingCharacterList && <ActivityIndicator size="small" color="#0f766e" />}
 
@@ -311,28 +325,39 @@ export function MobileChatScreen() {
                 <Text style={styles.characterDescriptionText}>
                   {character.character_description}
                 </Text>
+                <Text style={styles.characterMetaText}>
+                  {character.character_gender} · {character.character_age_range}
+                </Text>
               </Pressable>
             );
           })}
         </View>
 
-        <Pressable style={styles.startButton} onPress={() => void startSessionAction()}>
-          <Text style={styles.startButtonText}>Start New Session</Text>
+        <Pressable
+          style={[
+            styles.startButton,
+            (!selectedCharacterId || !selectedAiModelProvider) &&
+              styles.disabledSendButton,
+          ]}
+          onPress={() => void startSessionAction()}
+          disabled={!selectedCharacterId || !selectedAiModelProvider}
+        >
+          <Text style={styles.startButtonText}>대화 열기</Text>
         </Pressable>
       </View>
 
       <View style={styles.chatPanel}>
         <Text style={styles.chatHeaderText}>
-          {selectedCharacter?.character_name ?? "No character selected"}
+          {selectedCharacter?.character_name ?? "선택된 캐릭터 없음"}
         </Text>
-        <Text style={styles.sessionLabelText}>Sessions</Text>
+        <Text style={styles.sessionLabelText}>대화 목록</Text>
         {isLoadingSessionList && (
           <ActivityIndicator size="small" color="#0f766e" />
         )}
 
         {!isLoadingSessionList && chatSessionList.length === 0 && (
           <Text style={styles.emptySessionText}>
-            No saved session for this character.
+            이 캐릭터의 저장된 대화가 없습니다.
           </Text>
         )}
 
@@ -354,7 +379,7 @@ export function MobileChatScreen() {
                   onPress={() => void openChatSessionAction(item)}
                 >
                   <Text style={styles.sessionButtonTitleText}>
-                    Session {chatSessionList.length - index}
+                    대화 {chatSessionList.length - index}
                   </Text>
                   <Text style={styles.sessionButtonDateText}>
                     {formatSessionCreatedAt(item.created_at)}
@@ -402,33 +427,39 @@ export function MobileChatScreen() {
           contentContainerStyle={styles.messageListContent}
           data={messageList}
           keyExtractor={(message) => message.message_id}
-          renderItem={({ item }) => (
-            <View
-              style={[
-                styles.messageBubble,
-                item.role === "user"
-                  ? styles.userMessageBubble
-                  : styles.assistantMessageBubble,
-              ]}
-            >
-              <Text
+          renderItem={({ item }) => {
+            const tokenUsageText =
+              item.role === "assistant" ? formatTokenUsageText(item) : "";
+
+            return (
+              <View
                 style={[
-                  styles.messageText,
+                  styles.messageBubble,
                   item.role === "user"
-                    ? styles.userMessageText
-                    : styles.assistantMessageText,
+                    ? styles.userMessageBubble
+                    : styles.assistantMessageBubble,
                 ]}
               >
-                {item.message_text}
-              </Text>
-              <Text style={styles.messageTimeText}>
-                {formatMessageTime(item.created_at)}
-              </Text>
-            </View>
-          )}
+                <Text
+                  style={[
+                    styles.messageText,
+                    item.role === "user"
+                      ? styles.userMessageText
+                      : styles.assistantMessageText,
+                  ]}
+                >
+                  {item.message_text}
+                </Text>
+                <Text style={styles.messageTimeText}>
+                  {formatMessageTime(item.created_at)}
+                  {tokenUsageText ? ` · ${tokenUsageText}` : ""}
+                </Text>
+              </View>
+            );
+          }}
           ListEmptyComponent={
             <Text style={styles.emptyMessageText}>
-              Start a session and send your first message.
+              대화를 열고 첫 메시지를 보내 보세요.
             </Text>
           }
         />
@@ -437,9 +468,13 @@ export function MobileChatScreen() {
           <TextInput
             value={userMessageText}
             onChangeText={setUserMessageText}
-            placeholder="Type your message..."
+            placeholder="메시지를 입력하세요..."
             style={styles.messageInput}
-            editable={!isSendingMessage}
+            editable={
+              !isSendingMessage &&
+              Boolean(selectedCharacterId) &&
+              Boolean(selectedAiModelProvider)
+            }
           />
           <Pressable
             style={[
@@ -447,10 +482,14 @@ export function MobileChatScreen() {
               isSendingMessage && styles.disabledSendButton,
             ]}
             onPress={() => void sendMessageAction()}
-            disabled={isSendingMessage}
+            disabled={
+              isSendingMessage ||
+              !selectedCharacterId ||
+              !selectedAiModelProvider
+            }
           >
             <Text style={styles.sendButtonText}>
-              {isSendingMessage ? "..." : "Send"}
+              {isSendingMessage ? "..." : "보내기"}
             </Text>
           </Pressable>
         </View>
@@ -508,6 +547,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     color: "#475569",
+  },
+  characterMetaText: {
+    marginTop: 2,
+    fontSize: 11,
+    color: "#64748b",
   },
   startButton: {
     marginTop: 4,

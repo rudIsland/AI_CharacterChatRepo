@@ -9,8 +9,8 @@ const manropeFont = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "AI Character Chat",
-  description: "Simple character chat client",
+  title: "AI 캐릭터 채팅",
+  description: "캐릭터와 대화하는 채팅 클라이언트",
 };
 
 export default function RootLayout({
@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ko">
       <body className={manropeFont.className}>{children}</body>
     </html>
   );
