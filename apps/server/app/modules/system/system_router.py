@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
 from app.core.app_settings import get_app_settings
+from app.modules.ai.ai_model_registry import get_available_ai_model_provider_list
+from app.modules.chat.chat_schema import AiModelProvider
 from app.modules.system.system_schema import (
     AiModelOption,
     AiModelOptionListResponse,
@@ -33,20 +35,31 @@ def post_message_echo(request_body: EchoRequest) -> EchoResponse:
 def get_ai_model_option_list() -> AiModelOptionListResponse:
     app_settings = get_app_settings()
     ai_model_option_list = [
-        AiModelOption(
+        build_ai_model_option(ai_model_provider)
+        for ai_model_provider in get_available_ai_model_provider_list(app_settings)
+    ]
+    return AiModelOptionListResponse(ai_model_option_list=ai_model_option_list)
+
+
+def build_ai_model_option(ai_model_provider: AiModelProvider) -> AiModelOption:
+    app_settings = get_app_settings()
+
+    if ai_model_provider == "gpt":
+        return AiModelOption(
             ai_model_provider="gpt",
             ai_model_name=app_settings.openai_model_name,
             ai_model_label=f"GPT 모델 ({app_settings.openai_model_name})",
-        ),
-        AiModelOption(
+        )
+
+    if ai_model_provider == "gemini":
+        return AiModelOption(
             ai_model_provider="gemini",
             ai_model_name=app_settings.gemini_model_name,
             ai_model_label=f"제미나이 ({app_settings.gemini_model_name})",
-        ),
-        AiModelOption(
-            ai_model_provider="local_ai",
-            ai_model_name=app_settings.local_ai_model_name,
-            ai_model_label=f"로컬 AI ({app_settings.local_ai_model_name})",
-        ),
-    ]
-    return AiModelOptionListResponse(ai_model_option_list=ai_model_option_list)
+        )
+
+    return AiModelOption(
+        ai_model_provider="local_ai",
+        ai_model_name=app_settings.local_ai_model_name,
+        ai_model_label=f"로컬 AI ({app_settings.local_ai_model_name})",
+    )

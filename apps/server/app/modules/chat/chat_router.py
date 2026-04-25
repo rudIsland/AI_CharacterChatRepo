@@ -10,6 +10,7 @@ from app.modules.chat.chat_schema import (
     ChatSessionSummary,
 )
 from app.modules.chat.chat_service import (
+    AiModelUnavailableError,
     ChatService,
     ChatSessionNotFoundError,
     ChatSessionTokenLimitExceededError,
@@ -22,7 +23,11 @@ chat_router = APIRouter(prefix="/chat-sessions", tags=["chat"])
 app_settings = get_app_settings()
 chat_store = InMemoryChatStore()
 ai_reply_service = AiReplyService(app_settings=app_settings)
-chat_service = ChatService(chat_store=chat_store, ai_reply_service=ai_reply_service)
+chat_service = ChatService(
+    chat_store=chat_store,
+    ai_reply_service=ai_reply_service,
+    app_settings=app_settings,
+)
 daily_request_limiter = DailyRequestLimiter(
     daily_request_limit=app_settings.daily_ai_request_limit,
     daily_request_limit_per_ip=app_settings.daily_ai_request_limit_per_ip,
@@ -42,6 +47,11 @@ async def create_chat_session(
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+    except AiModelUnavailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(error),
         ) from error
 
@@ -96,6 +106,12 @@ async def create_chat_message(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="이 대화의 토큰 한도를 모두 사용했습니다.",
+        ) from error
+    except AiModelUnavailableError as error:
+        daily_request_limiter.decrease_request_count(ip_address)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
         ) from error
     except ValueError as error:
         daily_request_limiter.decrease_request_count(ip_address)
