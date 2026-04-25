@@ -1,5 +1,10 @@
 from app.modules.ai.ai_prompt_profile import CharacterPromptProfile, ChatHistoryTurn
 from app.modules.ai.ai_reply_service import AiReplyService
+from app.modules.ai.ai_model_registry import (
+    get_unavailable_ai_model_message,
+    is_ai_model_provider_available,
+)
+from app.core.app_settings import AppSettings
 from app.modules.character.character_data import find_character_profile_by_id
 from app.modules.chat.chat_schema import (
     AiModelProvider,
@@ -20,16 +25,23 @@ class ChatSessionTokenLimitExceededError(Exception):
     pass
 
 
+class AiModelUnavailableError(Exception):
+    pass
+
+
 class ChatService:
     def __init__(
         self,
         chat_store: InMemoryChatStore,
         ai_reply_service: AiReplyService,
+        app_settings: AppSettings,
     ) -> None:
         # 채팅 세션과 메시지를 저장하고 조회하는 저장소입니다.
         self._chat_store = chat_store
         # 캐릭터 설정과 대화 이력을 받아 AI 답변을 생성하는 서비스입니다.
         self._ai_reply_service = ai_reply_service
+        # 활성화된 AI 모델과 API 키 설정을 검증할 때 사용합니다.
+        self._app_settings = app_settings
 
     async def create_chat_session(
         self,
@@ -41,6 +53,7 @@ class ChatService:
         character = find_character_profile_by_id(character_id)
         if character is None:
             raise ValueError(f"Character not found: {character_id}")
+        self._raise_if_ai_model_unavailable(ai_model_provider)
 
         # 한 사용자는 캐릭터 하나당 하나의 세션만 사용합니다.
         # 이미 있으면 새로 만들지 않고 기존 세션을 돌려줍니다.
@@ -111,6 +124,10 @@ class ChatService:
         if character is None:
             raise ValueError(f"Character not found: {chat_session.character_id}")
 
+        # 요청에서 모델을 바꾸면 세션의 현재 모델도 같이 갱신합니다.
+        selected_ai_model_provider = ai_model_provider or chat_session.ai_model_provider
+        self._raise_if_ai_model_unavailable(selected_ai_model_provider)
+
         user_message = self._chat_store.append_chat_message(
             chat_session_id=chat_session_id,
             role="user",
@@ -129,8 +146,6 @@ class ChatService:
             for message in current_message_list
         ]
 
-        # 요청에서 모델을 바꾸면 세션의 현재 모델도 같이 갱신합니다.
-        selected_ai_model_provider = ai_model_provider or chat_session.ai_model_provider
         self._chat_store.update_chat_session_ai_model_provider(
             chat_session_id=chat_session_id,
             ai_model_provider=selected_ai_model_provider,
@@ -223,3 +238,17 @@ class ChatService:
                 used_token_count += message.output_token_count
 
         return used_token_count
+
+    def _raise_if_ai_model_unavailable(
+        self,
+        ai_model_provider: AiModelProvider,
+    ) -> None:
+        if is_ai_model_provider_available(
+            ai_model_provider=ai_model_provider,
+            app_settings=self._app_settings,
+        ):
+            return
+
+        raise AiModelUnavailableError(
+            get_unavailable_ai_model_message(ai_model_provider)
+        )

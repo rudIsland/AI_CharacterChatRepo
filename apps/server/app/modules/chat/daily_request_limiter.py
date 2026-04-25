@@ -11,6 +11,15 @@ class DailyRequestLimitResult:
     error_message: str | None = None
 
 
+@dataclass(frozen=True)
+class DailyRequestUsageSnapshot:
+    current_date: date
+    daily_request_count: int
+    daily_request_limit: int
+    daily_request_limit_per_ip: int
+    daily_request_count_by_ip: dict[str, int]
+
+
 class DailyRequestLimiter:
     def __init__(
         self,
@@ -70,6 +79,18 @@ class DailyRequestLimiter:
                 return
 
             self._daily_request_count_by_ip[ip_address] = current_ip_request_count - 1
+
+    def get_usage_snapshot(self) -> DailyRequestUsageSnapshot:
+        with self._write_lock:
+            self._reset_count_if_date_changed()
+
+            return DailyRequestUsageSnapshot(
+                current_date=self._current_date,
+                daily_request_count=self._daily_request_count,
+                daily_request_limit=self._daily_request_limit,
+                daily_request_limit_per_ip=self._daily_request_limit_per_ip,
+                daily_request_count_by_ip=dict(self._daily_request_count_by_ip),
+            )
 
     def _reset_count_if_date_changed(self) -> None:
         today = self._get_today()
