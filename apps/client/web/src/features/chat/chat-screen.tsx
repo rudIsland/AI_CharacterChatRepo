@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { ChatCharacterList } from "@/features/chat/chat-character-list";
 import { ChatCharacterProfile } from "@/features/chat/chat-character-profile";
 import { ChatDailyRequestUsage } from "@/features/chat/chat-daily-request-usage";
@@ -41,6 +43,13 @@ export function ChatScreen() {
 
   return (
     <main className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,_#1e293b,_transparent_55%),radial-gradient(circle_at_bottom_right,_#0f172a,_transparent_45%),#020617] px-3 py-3 sm:px-4">
+      <Link
+        href="/admin/usage"
+        className="fixed right-4 top-4 z-50 rounded-md border border-slate-700/50 bg-slate-800/50 px-3 py-1.5 text-xs font-medium text-slate-300 shadow-sm backdrop-blur-md transition-colors hover:bg-slate-700 hover:text-white"
+      >
+        관리자 접속
+      </Link>
+
       <section className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-panel sm:p-4">
         <ChatCharacterList
           characterList={characterList}

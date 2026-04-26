@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   fetchAdminDailyRequestUsage,
@@ -8,8 +8,6 @@ import {
   resetAdminDailyRequestUsage,
 } from "@/features/chat/chat-api-client";
 import type { AdminDailyRequestUsageResponse } from "@/features/chat/chat-types";
-
-const adminApiKeyStorageKey = "admin_api_key";
 
 function formatLimitText(count: number, limit: number): string {
   if (limit === 0) {
@@ -30,36 +28,16 @@ function formatLastAccessAt(lastAccessAt: string | null): string {
 }
 
 export function AdminUsageScreen() {
-  const [adminApiKey, setAdminApiKey] = useState(
-    process.env.NEXT_PUBLIC_ADMIN_API_KEY || process.env.ADMIN_API_KEY || ""
-  );
+  const [adminApiKey, setAdminApiKey] = useState("");
   const [usage, setUsage] = useState<AdminDailyRequestUsageResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const adminClientIpAddress = (usage as any)?.client_ip_address ?? (usage as any)?.admin_client_ip_address ?? "";
 
   const sortedIpUsageList = useMemo(() => {
     return [...(usage?.ip_usage_list ?? [])].sort((left, right) => {
-      if (left.ip_address === adminClientIpAddress) {
-        return -1;
-      }
-      if (right.ip_address === adminClientIpAddress) {
-        return 1;
-      }
       return right.access_count - left.access_count;
     });
-  }, [adminClientIpAddress, usage]);
-
-  useEffect(() => {
-    const envApiKey = process.env.NEXT_PUBLIC_ADMIN_API_KEY || process.env.ADMIN_API_KEY;
-    const storedAdminApiKey = window.localStorage.getItem(adminApiKeyStorageKey);
-    const initialApiKey = envApiKey || storedAdminApiKey;
-
-    if (initialApiKey) {
-      setAdminApiKey(initialApiKey);
-      void loadUsageAction(initialApiKey);
-    }
-  }, []);
+  }, [usage]);
 
   const loadUsageAction = async (apiKey = adminApiKey) => {
     const cleanApiKey = apiKey.trim();
@@ -71,7 +49,6 @@ export function AdminUsageScreen() {
     try {
       setIsLoading(true);
       setErrorMessage(null);
-      window.localStorage.setItem(adminApiKeyStorageKey, cleanApiKey);
       const usageFromServer = await fetchAdminDailyRequestUsage(cleanApiKey);
       setUsage(usageFromServer);
     } catch (error) {
@@ -167,7 +144,7 @@ export function AdminUsageScreen() {
           </p>
         )}
 
-        <section className="grid gap-3 md:grid-cols-4">
+        <section className="grid gap-3 md:grid-cols-3">
           <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
             <p className="text-xs font-semibold text-slate-500">전체 AI 요청</p>
             <p className="mt-2 text-xl font-semibold">
@@ -188,13 +165,7 @@ export function AdminUsageScreen() {
             </p>
           </div>
           <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-            <p className="text-xs font-semibold text-slate-500">현재 관리자 IP</p>
-            <p className="mt-2 truncate font-mono text-xl font-semibold">
-              {adminClientIpAddress || "-"}
-            </p>
-          </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-            <p className="text-xs font-semibold text-slate-500">기록된 IP</p>
+            <p className="text-xs font-semibold text-slate-500">접속 IP</p>
             <p className="mt-2 text-xl font-semibold">
               {usage ? sortedIpUsageList.length.toLocaleString("ko-KR") : "-"}
             </p>
@@ -241,11 +212,6 @@ export function AdminUsageScreen() {
                   >
                     <td className="px-4 py-3 font-mono text-xs text-slate-200">
                       {ipUsage.ip_address}
-                      {ipUsage.ip_address === adminClientIpAddress && (
-                        <span className="ml-2 rounded border border-emerald-800 px-1.5 py-0.5 font-sans text-[11px] font-semibold text-emerald-300">
-                          현재
-                        </span>
-                      )}
                     </td>
                     <td className="px-4 py-3">
                       {formatLimitText(
