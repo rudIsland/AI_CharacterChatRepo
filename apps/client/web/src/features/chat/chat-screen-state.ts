@@ -19,6 +19,7 @@ import type {
 
 const guestIdStorageKey = "guest_id";
 const defaultTokenLimitCount = 50_000;
+const serverWakeNoticeDelayMs = 2_500;
 
 export type ChatMessageView = ChatMessage & {
   isPending?: boolean;
@@ -53,6 +54,8 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
 export function useChatScreenState() {
   const [characterList, setCharacterList] = useState<CharacterSummary[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
+  const [selectedCharacterRefreshCount, setSelectedCharacterRefreshCount] =
+    useState(0);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [guestId, setGuestId] = useState("");
   const [messageList, setMessageList] = useState<ChatMessageView[]>([]);
@@ -61,6 +64,8 @@ export function useChatScreenState() {
     useState<AiModelProvider | "">("");
   const [userMessageText, setUserMessageText] = useState("");
   const [isLoadingCharacterList, setIsLoadingCharacterList] = useState(true);
+  const [isServerWakeNoticeVisible, setIsServerWakeNoticeVisible] =
+    useState(false);
   const [isOpeningSession, setIsOpeningSession] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -108,6 +113,21 @@ export function useChatScreenState() {
     setGuestId(getStoredGuestId());
     void refreshDailyRequestUsageAction();
   }, []);
+
+  useEffect(() => {
+    if (!isLoadingCharacterList || characterList.length > 0) {
+      setIsServerWakeNoticeVisible(false);
+      return;
+    }
+
+    const wakeNoticeTimer = window.setTimeout(() => {
+      setIsServerWakeNoticeVisible(true);
+    }, serverWakeNoticeDelayMs);
+
+    return () => {
+      window.clearTimeout(wakeNoticeTimer);
+    };
+  }, [characterList.length, isLoadingCharacterList]);
 
   useEffect(() => {
     const loadAiModelList = async () => {
@@ -199,10 +219,18 @@ export function useChatScreenState() {
     return () => {
       shouldUpdateScreen = false;
     };
-  }, [guestId, selectedCharacterId, selectedAiModelProvider]);
+  }, [
+    guestId,
+    selectedCharacterId,
+    selectedAiModelProvider,
+    selectedCharacterRefreshCount,
+  ]);
 
   const selectCharacterAction = (characterId: string) => {
     setSelectedCharacterId(characterId);
+    setSelectedCharacterRefreshCount(
+      (previousRefreshCount) => previousRefreshCount + 1
+    );
     setActiveSessionId(null);
     setMessageList([]);
     setUsedTokenCount(0);
@@ -327,6 +355,7 @@ export function useChatScreenState() {
     selectedAiModelProvider,
     userMessageText,
     isLoadingCharacterList,
+    isServerWakeNoticeVisible,
     isOpeningSession,
     isSendingMessage,
     usedTokenCount,
