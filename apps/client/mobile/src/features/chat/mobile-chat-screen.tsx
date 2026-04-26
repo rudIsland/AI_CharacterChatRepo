@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -203,6 +205,7 @@ export function MobileChatScreen() {
   const selectCharacterAction = (characterId: string) => {
     setSelectedCharacterId(characterId);
     setActiveSessionId(null);
+    setChatSessionList([]);
     setMessageList([]);
     setErrorMessage(null);
   };
@@ -336,257 +339,300 @@ export function MobileChatScreen() {
   };
 
   return (
-    <View style={styles.screenContainer}>
-      <View style={styles.characterPanel}>
-        <Text style={styles.titleText}>AI 캐릭터 채팅</Text>
-        <Text style={styles.helperText}>게스트 ID: {guestId}</Text>
+    <KeyboardAvoidingView
+      style={styles.keyboardAvoidingContainer}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={styles.screenContainer}>
+        <View style={styles.characterPanel}>
+          <View style={styles.titleRow}>
+            <View style={styles.titleTextGroup}>
+              <Text style={styles.titleText}>AI 캐릭터 채팅</Text>
+              <Text style={styles.helperText}>게스트 ID: {guestId}</Text>
+            </View>
+            {isLoadingCharacterList ? (
+              <ActivityIndicator size="small" color="#0f766e" />
+            ) : null}
+          </View>
 
-        {isLoadingCharacterList && <ActivityIndicator size="small" color="#0f766e" />}
-
-        <View style={styles.characterListContainer}>
-          {characterList.map((character) => {
-            const isSelected = character.character_id === selectedCharacterId;
-            return (
-              <Pressable
-                key={character.character_id}
-                style={[
-                  styles.characterButton,
-                  isSelected && styles.selectedCharacterButton,
-                ]}
-                onPress={() => selectCharacterAction(character.character_id)}
-              >
-                <Text style={styles.characterNameText}>{character.character_name}</Text>
-                <Text style={styles.characterDescriptionText}>
-                  {character.character_description}
-                </Text>
-                <Text style={styles.characterMetaText}>
-                  {character.character_gender} · {character.character_age_range}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Pressable
-          style={[
-            styles.startButton,
-            (!selectedCharacterId || !selectedAiModelProvider) &&
-              styles.disabledSendButton,
-          ]}
-          onPress={() => void startSessionAction()}
-          disabled={!selectedCharacterId || !selectedAiModelProvider}
-        >
-          <Text style={styles.startButtonText}>대화 열기</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.chatPanel}>
-        <Text style={styles.chatHeaderText}>
-          {selectedCharacter?.character_name ?? "선택된 캐릭터 없음"}
-        </Text>
-        {dailyRequestUsage ? (
-          <Text style={styles.usageText}>
-            내 일일 요청{" "}
-            {formatDailyRequestLimitText(
-              dailyRequestUsage.client_daily_request_count,
-              dailyRequestUsage.client_daily_request_limit
-            )}{" "}
-            · 전체{" "}
-            {formatDailyRequestLimitText(
-              dailyRequestUsage.daily_request_count,
-              dailyRequestUsage.daily_request_limit
-            )}
-          </Text>
-        ) : null}
-        <Text style={styles.sessionLabelText}>대화 목록</Text>
-        {isLoadingSessionList && (
-          <ActivityIndicator size="small" color="#0f766e" />
-        )}
-
-        {!isLoadingSessionList && chatSessionList.length === 0 && (
-          <Text style={styles.emptySessionText}>
-            이 캐릭터의 저장된 대화가 없습니다.
-          </Text>
-        )}
-
-        {chatSessionList.length > 0 && (
           <FlatList
-            data={chatSessionList}
+            data={characterList}
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(session) => session.chat_session_id}
-            contentContainerStyle={styles.sessionListContainer}
-            renderItem={({ item, index }) => {
-              const isActive = activeSessionId === item.chat_session_id;
+            keyExtractor={(character) => character.character_id}
+            contentContainerStyle={styles.characterListContent}
+            renderItem={({ item: character }) => {
+              const isSelected = character.character_id === selectedCharacterId;
               return (
                 <Pressable
                   style={[
-                    styles.sessionButton,
-                    isActive && styles.activeSessionButton,
+                    styles.characterButton,
+                    isSelected && styles.selectedCharacterButton,
                   ]}
-                  onPress={() => void openChatSessionAction(item)}
+                  onPress={() => selectCharacterAction(character.character_id)}
                 >
-                  <Text style={styles.sessionButtonTitleText}>
-                    대화 {chatSessionList.length - index}
+                  <Text style={styles.characterNameText} numberOfLines={1}>
+                    {character.character_name}
                   </Text>
-                  <Text style={styles.sessionButtonDateText}>
-                    {formatSessionCreatedAt(item.created_at)}
+                  <Text
+                    style={styles.characterDescriptionText}
+                    numberOfLines={1}
+                  >
+                    {character.character_description}
                   </Text>
-                  <Text style={styles.sessionButtonDateText}>
-                    {formatAiModelProviderLabel(item.ai_model_provider)}
+                  <Text style={styles.characterMetaText} numberOfLines={1}>
+                    {character.character_gender} · {character.character_age_range}
                   </Text>
                 </Pressable>
               );
             }}
           />
-        )}
-
-        <View style={styles.aiModelRow}>
-          {aiModelOptionList.map((aiModelOption) => {
-            const isSelected =
-              selectedAiModelProvider === aiModelOption.ai_model_provider;
-            return (
-              <Pressable
-                key={aiModelOption.ai_model_provider}
-                style={[
-                  styles.aiModelButton,
-                  isSelected && styles.activeAiModelButton,
-                ]}
-                onPress={() =>
-                  setSelectedAiModelProvider(aiModelOption.ai_model_provider)
-                }
-                disabled={isSendingMessage || !selectedCharacterId}
-              >
-                <Text
-                  style={[
-                    styles.aiModelButtonText,
-                    isSelected && styles.activeAiModelButtonText,
-                  ]}
-                >
-                  {aiModelOption.ai_model_label}
-                </Text>
-              </Pressable>
-            );
-          })}
         </View>
 
-        <FlatList
-          style={styles.messageList}
-          contentContainerStyle={styles.messageListContent}
-          data={messageList}
-          keyExtractor={(message) => message.message_id}
-          renderItem={({ item }) => {
-            const tokenUsageText =
-              item.role === "assistant" ? formatTokenUsageText(item) : "";
-
-            return (
-              <View
-                style={[
-                  styles.messageBubble,
-                  item.role === "user"
-                    ? styles.userMessageBubble
-                    : styles.assistantMessageBubble,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.messageText,
-                    item.role === "user"
-                      ? styles.userMessageText
-                      : styles.assistantMessageText,
-                  ]}
-                >
-                  {item.message_text}
+        <View style={styles.chatPanel}>
+          <View style={styles.chatHeaderRow}>
+            <View style={styles.chatHeaderTextGroup}>
+              <Text style={styles.chatHeaderText} numberOfLines={1}>
+                {selectedCharacter?.character_name ?? "선택된 캐릭터 없음"}
+              </Text>
+              {dailyRequestUsage ? (
+                <Text style={styles.usageText} numberOfLines={1}>
+                  내 일일 요청{" "}
+                  {formatDailyRequestLimitText(
+                    dailyRequestUsage.client_daily_request_count,
+                    dailyRequestUsage.client_daily_request_limit
+                  )}{" "}
+                  · 전체{" "}
+                  {formatDailyRequestLimitText(
+                    dailyRequestUsage.daily_request_count,
+                    dailyRequestUsage.daily_request_limit
+                  )}
                 </Text>
-                <Text style={styles.messageTimeText}>
-                  {formatMessageTime(item.created_at)}
-                  {tokenUsageText ? ` · ${tokenUsageText}` : ""}
-                </Text>
-              </View>
-            );
-          }}
-          ListEmptyComponent={
-            <Text style={styles.emptyMessageText}>
-              대화를 열고 첫 메시지를 보내 보세요.
-            </Text>
-          }
-        />
-
-        <View style={styles.messageInputContainer}>
-          <View style={styles.messageInputRow}>
-            <TextInput
-              value={userMessageText}
-              onChangeText={setUserMessageText}
-              placeholder="메시지를 입력하세요..."
-              style={styles.messageInput}
-              multiline
-              maxLength={USER_MESSAGE_MAX_LENGTH}
-              editable={
-                !isSendingMessage &&
-                Boolean(selectedCharacterId) &&
-                Boolean(selectedAiModelProvider)
-              }
-            />
+              ) : null}
+            </View>
             <Pressable
               style={[
-                styles.sendButton,
-                isSendingMessage && styles.disabledSendButton,
+                styles.startButton,
+                (!selectedCharacterId || !selectedAiModelProvider) &&
+                  styles.disabledSendButton,
               ]}
-              onPress={() => void sendMessageAction()}
-              disabled={
-                isSendingMessage ||
-                !selectedCharacterId ||
-                !selectedAiModelProvider
-              }
+              onPress={() => void startSessionAction()}
+              disabled={!selectedCharacterId || !selectedAiModelProvider}
             >
-              <Text style={styles.sendButtonText}>
-                {isSendingMessage ? "..." : "보내기"}
-              </Text>
+              <Text style={styles.startButtonText}>대화 열기</Text>
             </Pressable>
           </View>
-          <Text style={styles.messageLengthText}>
-            {userMessageText.length} / {USER_MESSAGE_MAX_LENGTH}
-          </Text>
-        </View>
 
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {isLoadingSessionList || chatSessionList.length > 0 ? (
+            <View style={styles.sessionArea}>
+              {isLoadingSessionList ? (
+                <ActivityIndicator size="small" color="#0f766e" />
+              ) : null}
+
+              {chatSessionList.length > 0 ? (
+                <FlatList
+                  data={chatSessionList}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(session) => session.chat_session_id}
+                  contentContainerStyle={styles.sessionListContainer}
+                  renderItem={({ item, index }) => {
+                    const isActive = activeSessionId === item.chat_session_id;
+                    return (
+                      <Pressable
+                        style={[
+                          styles.sessionButton,
+                          isActive && styles.activeSessionButton,
+                        ]}
+                        onPress={() => void openChatSessionAction(item)}
+                      >
+                        <Text style={styles.sessionButtonTitleText}>
+                          대화 {chatSessionList.length - index}
+                        </Text>
+                        <Text style={styles.sessionButtonDateText}>
+                          {formatSessionCreatedAt(item.created_at)}
+                        </Text>
+                        <Text style={styles.sessionButtonDateText}>
+                          {formatAiModelProviderLabel(item.ai_model_provider)}
+                        </Text>
+                      </Pressable>
+                    );
+                  }}
+                />
+              ) : null}
+            </View>
+          ) : null}
+
+          <View style={styles.aiModelRow}>
+            {aiModelOptionList.map((aiModelOption) => {
+              const isSelected =
+                selectedAiModelProvider === aiModelOption.ai_model_provider;
+              return (
+                <Pressable
+                  key={aiModelOption.ai_model_provider}
+                  style={[
+                    styles.aiModelButton,
+                    isSelected && styles.activeAiModelButton,
+                  ]}
+                  onPress={() =>
+                    setSelectedAiModelProvider(aiModelOption.ai_model_provider)
+                  }
+                  disabled={isSendingMessage || !selectedCharacterId}
+                >
+                  <Text
+                    style={[
+                      styles.aiModelButtonText,
+                      isSelected && styles.activeAiModelButtonText,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {aiModelOption.ai_model_label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <FlatList
+            style={styles.messageList}
+            contentContainerStyle={[
+              styles.messageListContent,
+              messageList.length === 0 && styles.emptyMessageListContent,
+            ]}
+            data={messageList}
+            keyExtractor={(message) => message.message_id}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => {
+              const tokenUsageText =
+                item.role === "assistant" ? formatTokenUsageText(item) : "";
+
+              return (
+                <View
+                  style={[
+                    styles.messageBubble,
+                    item.role === "user"
+                      ? styles.userMessageBubble
+                      : styles.assistantMessageBubble,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.messageText,
+                      item.role === "user"
+                        ? styles.userMessageText
+                        : styles.assistantMessageText,
+                    ]}
+                  >
+                    {item.message_text}
+                  </Text>
+                  <Text style={styles.messageTimeText}>
+                    {formatMessageTime(item.created_at)}
+                    {tokenUsageText ? ` · ${tokenUsageText}` : ""}
+                  </Text>
+                </View>
+              );
+            }}
+            ListEmptyComponent={
+              <Text style={styles.emptyMessageText}>
+                대화를 열고 첫 메시지를 보내 보세요.
+              </Text>
+            }
+          />
+
+          <View style={styles.messageInputContainer}>
+            <View style={styles.messageInputRow}>
+              <TextInput
+                value={userMessageText}
+                onChangeText={setUserMessageText}
+                placeholder="메시지를 입력하세요..."
+                style={styles.messageInput}
+                multiline
+                maxLength={USER_MESSAGE_MAX_LENGTH}
+                editable={
+                  !isSendingMessage &&
+                  Boolean(selectedCharacterId) &&
+                  Boolean(selectedAiModelProvider)
+                }
+              />
+              <Pressable
+                style={[
+                  styles.sendButton,
+                  isSendingMessage && styles.disabledSendButton,
+                ]}
+                onPress={() => void sendMessageAction()}
+                disabled={
+                  isSendingMessage ||
+                  !selectedCharacterId ||
+                  !selectedAiModelProvider
+                }
+              >
+                <Text style={styles.sendButtonText}>
+                  {isSendingMessage ? "..." : "보내기"}
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={styles.messageLengthText}>
+              {userMessageText.length} / {USER_MESSAGE_MAX_LENGTH}
+            </Text>
+          </View>
+
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoidingContainer: {
+    flex: 1,
+  },
   screenContainer: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
     backgroundColor: "#f1f5f9",
-    gap: 12,
+    gap: 8,
   },
   characterPanel: {
     borderWidth: 1,
     borderColor: "#cbd5e1",
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 10,
+    padding: 8,
     backgroundColor: "#ffffff",
+    gap: 6,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
+  titleTextGroup: {
+    flex: 1,
+  },
   titleText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#0f172a",
   },
   helperText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#475569",
   },
-  characterListContainer: {
+  characterListContent: {
     gap: 8,
+    paddingRight: 2,
   },
   characterButton: {
+    width: 178,
+    minHeight: 68,
     borderWidth: 1,
     borderColor: "#cbd5e1",
-    borderRadius: 12,
-    padding: 10,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     backgroundColor: "#f8fafc",
   },
   selectedCharacterButton: {
@@ -609,24 +655,37 @@ const styles = StyleSheet.create({
     color: "#64748b",
   },
   startButton: {
-    marginTop: 4,
+    minWidth: 78,
+    minHeight: 36,
     borderRadius: 10,
     backgroundColor: "#0f766e",
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    justifyContent: "center",
     alignItems: "center",
   },
   startButtonText: {
     color: "#ffffff",
+    fontSize: 12,
     fontWeight: "700",
   },
   chatPanel: {
     flex: 1,
+    minHeight: 0,
     borderWidth: 1,
     borderColor: "#cbd5e1",
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 10,
+    padding: 8,
     backgroundColor: "#ffffff",
+    gap: 6,
+  },
+  chatHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
+  },
+  chatHeaderTextGroup: {
+    flex: 1,
+    minWidth: 0,
   },
   chatHeaderText: {
     fontSize: 16,
@@ -634,62 +693,63 @@ const styles = StyleSheet.create({
     color: "#0f172a",
   },
   usageText: {
-    fontSize: 12,
+    marginTop: 1,
+    fontSize: 11,
     color: "#475569",
     fontWeight: "600",
   },
-  sessionLabelText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#334155",
-  },
-  emptySessionText: {
-    fontSize: 12,
-    color: "#64748b",
+  sessionArea: {
+    minHeight: 46,
+    justifyContent: "center",
   },
   sessionListContainer: {
-    gap: 8,
-    paddingBottom: 6,
+    gap: 6,
+    paddingRight: 2,
   },
   sessionButton: {
+    minWidth: 96,
     borderWidth: 1,
     borderColor: "#cbd5e1",
-    borderRadius: 10,
+    borderRadius: 8,
     backgroundColor: "#f8fafc",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    minWidth: 110,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   activeSessionButton: {
     borderColor: "#0f766e",
     backgroundColor: "#ecfdf5",
   },
   sessionButtonTitleText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     color: "#0f172a",
   },
   sessionButtonDateText: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#64748b",
     marginTop: 2,
   },
   messageList: {
     flex: 1,
+    minHeight: 0,
     borderWidth: 1,
     borderColor: "#e2e8f0",
-    borderRadius: 12,
+    borderRadius: 10,
     backgroundColor: "#f8fafc",
   },
   messageListContent: {
-    padding: 10,
-    gap: 8,
+    flexGrow: 1,
+    padding: 8,
+    gap: 7,
+  },
+  emptyMessageListContent: {
+    justifyContent: "center",
   },
   messageBubble: {
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    maxWidth: "85%",
+    maxWidth: "88%",
   },
   userMessageBubble: {
     alignSelf: "flex-end",
@@ -702,7 +762,8 @@ const styles = StyleSheet.create({
     borderColor: "#99f6e4",
   },
   messageText: {
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 21,
   },
   userMessageText: {
     color: "#f8fafc",
@@ -712,7 +773,7 @@ const styles = StyleSheet.create({
   },
   messageTimeText: {
     marginTop: 4,
-    fontSize: 11,
+    fontSize: 10,
     color: "#64748b",
   },
   emptyMessageText: {
@@ -720,24 +781,24 @@ const styles = StyleSheet.create({
     color: "#64748b",
   },
   messageInputContainer: {
-    gap: 4,
+    gap: 3,
   },
   messageInputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 8,
+    gap: 6,
   },
   aiModelRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
   },
   aiModelButton: {
     borderWidth: 1,
     borderColor: "#cbd5e1",
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     backgroundColor: "#f8fafc",
   },
   activeAiModelButton: {
@@ -754,21 +815,23 @@ const styles = StyleSheet.create({
   },
   messageInput: {
     flex: 1,
-    maxHeight: 96,
-    minHeight: 42,
+    maxHeight: 92,
+    minHeight: 44,
     borderWidth: 1,
     borderColor: "#cbd5e1",
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
     backgroundColor: "#ffffff",
+    fontSize: 15,
     textAlignVertical: "top",
   },
   sendButton: {
-    minHeight: 42,
+    minHeight: 44,
+    minWidth: 62,
     borderRadius: 10,
     backgroundColor: "#0f172a",
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -781,7 +844,7 @@ const styles = StyleSheet.create({
   },
   messageLengthText: {
     alignSelf: "flex-end",
-    fontSize: 11,
+    fontSize: 10,
     color: "#64748b",
     fontWeight: "600",
   },
