@@ -72,15 +72,8 @@ class AppSettings(BaseSettings):
         description="하루 동안 한 IP가 보낼 수 있는 AI 답변 생성 요청 수입니다. 0이면 제한하지 않습니다.",
     )
     cors_allow_origins: list[str] = Field(
-        default=[
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:19006",
-            "http://127.0.0.1:19006",
-            "http://localhost:8081",
-            "http://127.0.0.1:8081",
-        ],
         description="브라우저와 모바일 개발 서버에서 API 호출을 허용할 출처 목록입니다.",
+        env="CORS_ALLOW_ORIGINS",
     )
 
     model_config = SettingsConfigDict(
