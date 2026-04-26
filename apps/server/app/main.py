@@ -1,11 +1,15 @@
 from pathlib import Path
 
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.core.app_settings import get_app_settings
+from app.modules.chat.chat_usage_tracker import (
+    daily_request_limiter,
+    get_request_ip_address,
+)
 
 app_settings = get_app_settings()
 static_directory = Path(__file__).resolve().parent / "static"
@@ -30,6 +34,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def record_request_access(request: Request, call_next):
+    request_path = request.url.path
+    if not request_path.startswith(("/static", "/assets")):
+        daily_request_limiter.record_access(get_request_ip_address(request))
+
+    return await call_next(request)
 
 
 @app.get("/")

@@ -26,14 +26,19 @@ class EchoResponse(BaseModel):
 
 
 class AiModelOption(BaseModel):
-    ai_model_provider: AiModelProvider = Field(
-        description="클라이언트가 서버에 전달할 AI 제공자 코드입니다."
-    )
+    ai_model_provider: AiModelProvider = Field(description="클라이언트가 서버에 전달할 AI 제공자 코드입니다.")
     ai_model_name: str = Field(description="서버 환경변수에서 관리하는 실제 모델 이름입니다.")
     ai_model_label: str = Field(description="클라이언트 화면에 보여줄 모델 표시 이름입니다.")
 
 
 class AiModelOptionListResponse(BaseModel):
-    ai_model_option_list: list[AiModelOption] = Field(
-        description="클라이언트가 선택할 수 있는 AI 모델 옵션 목록입니다."
-    )
+    ai_model_option_list: list[AiModelOption] = Field(description="클라이언트가 선택할 수 있는 AI 모델 옵션 목록입니다.")
+
+
+class DailyRequestUsageResponse(BaseModel):
+    current_date: str = Field(description="요청 수를 집계하는 기준 날짜입니다. KST 기준입니다.")
+    daily_request_count: int = Field(description="오늘 전체 AI 요청 수입니다.")
+    daily_request_limit: int = Field(description="오늘 전체 AI 요청 한도입니다. 0이면 제한이 없습니다.")
+    client_ip_address: str = Field(description="현재 클라이언트의 IP 주소입니다.")
+    client_daily_request_count: int = Field(description="현재 클라이언트 IP의 오늘 AI 요청 수입니다.")
+    client_daily_request_limit: int = Field(description="현재 클라이언트 IP의 오늘 AI 요청 한도입니다. 0이면 제한이 없습니다.")

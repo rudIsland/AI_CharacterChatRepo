@@ -8,6 +8,7 @@ AiModelProvider = Literal["gpt", "gemini", "local_ai"]
 
 # 한 대화 세션에서 사용할 수 있는 전체 토큰 할당량입니다.
 CHAT_SESSION_TOKEN_LIMIT_COUNT = 20_000
+USER_MESSAGE_MAX_LENGTH = 500
 
 
 class ChatSessionCreateRequest(BaseModel):
@@ -62,7 +63,7 @@ class ChatMessage(BaseModel):
 class ChatMessageCreateRequest(BaseModel):
     user_message_text: str = Field(
         min_length=1,
-        max_length=2000,
+        max_length=USER_MESSAGE_MAX_LENGTH,
         description="사용자가 새로 보낸 메시지 내용입니다.",
     )
     ai_model_provider: AiModelProvider | None = Field(

@@ -18,6 +18,8 @@ class DailyRequestUsageSnapshot:
     daily_request_limit: int
     daily_request_limit_per_ip: int
     daily_request_count_by_ip: dict[str, int]
+    access_count_by_ip: dict[str, int]
+    last_access_at_by_ip: dict[str, datetime]
 
 
 class DailyRequestLimiter:
@@ -31,7 +33,17 @@ class DailyRequestLimiter:
         self._current_date = self._get_today()
         self._daily_request_count = 0
         self._daily_request_count_by_ip: dict[str, int] = {}
+        self._access_count_by_ip: dict[str, int] = {}
+        self._last_access_at_by_ip: dict[str, datetime] = {}
         self._write_lock = Lock()
+
+    def record_access(self, ip_address: str) -> None:
+        with self._write_lock:
+            self._reset_count_if_date_changed()
+
+            current_access_count = self._access_count_by_ip.get(ip_address, 0)
+            self._access_count_by_ip[ip_address] = current_access_count + 1
+            self._last_access_at_by_ip[ip_address] = datetime.now(KOREA_TIMEZONE)
 
     def increase_request_count(self, ip_address: str) -> DailyRequestLimitResult:
         with self._write_lock:
@@ -90,7 +102,32 @@ class DailyRequestLimiter:
                 daily_request_limit=self._daily_request_limit,
                 daily_request_limit_per_ip=self._daily_request_limit_per_ip,
                 daily_request_count_by_ip=dict(self._daily_request_count_by_ip),
+                access_count_by_ip=dict(self._access_count_by_ip),
+                last_access_at_by_ip=dict(self._last_access_at_by_ip),
             )
+
+    def reset_usage(self) -> None:
+        with self._write_lock:
+            self._current_date = self._get_today()
+            self._daily_request_count = 0
+            self._daily_request_count_by_ip.clear()
+            self._access_count_by_ip.clear()
+            self._last_access_at_by_ip.clear()
+
+    def reset_ip_usage(self, ip_address: str) -> None:
+        with self._write_lock:
+            self._reset_count_if_date_changed()
+
+            current_ip_request_count = self._daily_request_count_by_ip.pop(
+                ip_address,
+                0,
+            )
+            self._daily_request_count = max(
+                0,
+                self._daily_request_count - current_ip_request_count,
+            )
+            self._access_count_by_ip.pop(ip_address, None)
+            self._last_access_at_by_ip.pop(ip_address, None)
 
     def _reset_count_if_date_changed(self) -> None:
         today = self._get_today()
@@ -100,6 +137,8 @@ class DailyRequestLimiter:
         self._current_date = today
         self._daily_request_count = 0
         self._daily_request_count_by_ip.clear()
+        self._access_count_by_ip.clear()
+        self._last_access_at_by_ip.clear()
 
     def _get_today(self) -> date:
         return datetime.now(KOREA_TIMEZONE).date()

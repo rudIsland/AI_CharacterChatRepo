@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -12,17 +12,20 @@ import {
 import {
   createChatMessage,
   createChatSession,
+  fetchDailyRequestUsage,
   fetchAiModelOptionList,
   fetchCharacterList,
   fetchChatMessageList,
   listChatSessionByGuestId,
 } from "./mobile-chat-api-client";
-import {
+import { USER_MESSAGE_MAX_LENGTH } from "./mobile-chat-types";
+import type {
   AiModelOption,
   AiModelProvider,
   CharacterSummary,
   ChatMessage,
   ChatSessionSummary,
+  ClientDailyRequestUsageResponse,
 } from "./mobile-chat-types";
 
 function createGuestId(): string {
@@ -64,6 +67,13 @@ function formatTokenUsageText(message: ChatMessage): string {
   return tokenTextList.join(" · ");
 }
 
+function formatDailyRequestLimitText(count: number, limit: number): string {
+  if (limit === 0) {
+    return `${count} / 무제한`;
+  }
+  return `${count} / ${limit}`;
+}
+
 export function MobileChatScreen() {
   const [guestId] = useState(createGuestId);
   const [characterList, setCharacterList] = useState<CharacterSummary[]>([]);
@@ -79,6 +89,9 @@ export function MobileChatScreen() {
   const [isLoadingSessionList, setIsLoadingSessionList] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [dailyRequestUsage, setDailyRequestUsage] =
+    useState<ClientDailyRequestUsageResponse | null>(null);
+  const isSendingMessageRef = useRef(false);
 
   const selectedCharacter = useMemo(
     () =>
@@ -98,6 +111,19 @@ export function MobileChatScreen() {
   const formatAiModelProviderLabel = (aiModelProvider: AiModelProvider): string => {
     return aiModelLabelMap[aiModelProvider] ?? aiModelProvider;
   };
+
+  const loadDailyRequestUsageAction = async () => {
+    try {
+      const usage = await fetchDailyRequestUsage();
+      setDailyRequestUsage(usage);
+    } catch (error) {
+      setDailyRequestUsage(null);
+    }
+  };
+
+  useEffect(() => {
+    void loadDailyRequestUsageAction();
+  }, []);
 
   useEffect(() => {
     const loadAiModelOptionList = async () => {
@@ -220,7 +246,12 @@ export function MobileChatScreen() {
 
   const sendMessageAction = async () => {
     const cleanMessageText = userMessageText.trim();
-    if (!cleanMessageText || !selectedCharacterId || !selectedAiModelProvider) {
+    if (
+      !cleanMessageText ||
+      !selectedCharacterId ||
+      !selectedAiModelProvider ||
+      isSendingMessageRef.current
+    ) {
       return;
     }
 
@@ -241,6 +272,7 @@ export function MobileChatScreen() {
     };
 
     try {
+      isSendingMessageRef.current = true;
       setIsSendingMessage(true);
       setErrorMessage(null);
       setMessageList((previousMessageList) => [
@@ -283,6 +315,7 @@ export function MobileChatScreen() {
           return message;
         })
       );
+      await loadDailyRequestUsageAction();
     } catch (error) {
       setErrorMessage("메시지를 보내지 못했습니다.");
       setMessageList((previousMessageList) =>
@@ -297,6 +330,7 @@ export function MobileChatScreen() {
         })
       );
     } finally {
+      isSendingMessageRef.current = false;
       setIsSendingMessage(false);
     }
   };
@@ -350,6 +384,20 @@ export function MobileChatScreen() {
         <Text style={styles.chatHeaderText}>
           {selectedCharacter?.character_name ?? "선택된 캐릭터 없음"}
         </Text>
+        {dailyRequestUsage ? (
+          <Text style={styles.usageText}>
+            내 일일 요청{" "}
+            {formatDailyRequestLimitText(
+              dailyRequestUsage.client_daily_request_count,
+              dailyRequestUsage.client_daily_request_limit
+            )}{" "}
+            · 전체{" "}
+            {formatDailyRequestLimitText(
+              dailyRequestUsage.daily_request_count,
+              dailyRequestUsage.daily_request_limit
+            )}
+          </Text>
+        ) : null}
         <Text style={styles.sessionLabelText}>대화 목록</Text>
         {isLoadingSessionList && (
           <ActivityIndicator size="small" color="#0f766e" />
@@ -464,34 +512,41 @@ export function MobileChatScreen() {
           }
         />
 
-        <View style={styles.messageInputRow}>
-          <TextInput
-            value={userMessageText}
-            onChangeText={setUserMessageText}
-            placeholder="메시지를 입력하세요..."
-            style={styles.messageInput}
-            editable={
-              !isSendingMessage &&
-              Boolean(selectedCharacterId) &&
-              Boolean(selectedAiModelProvider)
-            }
-          />
-          <Pressable
-            style={[
-              styles.sendButton,
-              isSendingMessage && styles.disabledSendButton,
-            ]}
-            onPress={() => void sendMessageAction()}
-            disabled={
-              isSendingMessage ||
-              !selectedCharacterId ||
-              !selectedAiModelProvider
-            }
-          >
-            <Text style={styles.sendButtonText}>
-              {isSendingMessage ? "..." : "보내기"}
-            </Text>
-          </Pressable>
+        <View style={styles.messageInputContainer}>
+          <View style={styles.messageInputRow}>
+            <TextInput
+              value={userMessageText}
+              onChangeText={setUserMessageText}
+              placeholder="메시지를 입력하세요..."
+              style={styles.messageInput}
+              multiline
+              maxLength={USER_MESSAGE_MAX_LENGTH}
+              editable={
+                !isSendingMessage &&
+                Boolean(selectedCharacterId) &&
+                Boolean(selectedAiModelProvider)
+              }
+            />
+            <Pressable
+              style={[
+                styles.sendButton,
+                isSendingMessage && styles.disabledSendButton,
+              ]}
+              onPress={() => void sendMessageAction()}
+              disabled={
+                isSendingMessage ||
+                !selectedCharacterId ||
+                !selectedAiModelProvider
+              }
+            >
+              <Text style={styles.sendButtonText}>
+                {isSendingMessage ? "..." : "보내기"}
+              </Text>
+            </Pressable>
+          </View>
+          <Text style={styles.messageLengthText}>
+            {userMessageText.length} / {USER_MESSAGE_MAX_LENGTH}
+          </Text>
         </View>
 
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
@@ -578,6 +633,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#0f172a",
   },
+  usageText: {
+    fontSize: 12,
+    color: "#475569",
+    fontWeight: "600",
+  },
   sessionLabelText: {
     fontSize: 12,
     fontWeight: "700",
@@ -659,8 +719,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#64748b",
   },
+  messageInputContainer: {
+    gap: 4,
+  },
   messageInputRow: {
     flexDirection: "row",
+    alignItems: "flex-end",
     gap: 8,
   },
   aiModelRow: {
@@ -690,14 +754,18 @@ const styles = StyleSheet.create({
   },
   messageInput: {
     flex: 1,
+    maxHeight: 96,
+    minHeight: 42,
     borderWidth: 1,
     borderColor: "#cbd5e1",
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
     backgroundColor: "#ffffff",
+    textAlignVertical: "top",
   },
   sendButton: {
+    minHeight: 42,
     borderRadius: 10,
     backgroundColor: "#0f172a",
     paddingHorizontal: 16,
@@ -710,6 +778,12 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: "#ffffff",
     fontWeight: "700",
+  },
+  messageLengthText: {
+    alignSelf: "flex-end",
+    fontSize: 11,
+    color: "#64748b",
+    fontWeight: "600",
   },
   errorText: {
     color: "#be123c",
