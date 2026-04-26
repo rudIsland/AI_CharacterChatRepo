@@ -53,7 +53,7 @@ export function ChatInputForm({
         onMessageSend();
       }}
     >
-      <div className="flex flex-row items-end gap-2">
+      <div className="flex flex-row items-end gap-1.5 sm:gap-2">
         <ChatAiModelSelect
           aiModelOptionList={aiModelOptionList}
           selectedAiModelProvider={selectedAiModelProvider}
@@ -64,7 +64,7 @@ export function ChatInputForm({
         />
 
         <textarea
-          className="max-h-28 min-h-10 flex-1 resize-none rounded-2xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm leading-5 text-white outline-none ring-emerald-500 transition focus:bg-slate-700 focus:ring-2 placeholder:text-slate-500"
+          className="max-h-28 min-h-10 flex-1 resize-none rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm leading-5 text-white outline-none ring-emerald-500 transition focus:bg-slate-700 focus:ring-2 placeholder:text-slate-500 sm:rounded-2xl sm:px-4"
           placeholder="메시지를 입력하세요..."
           value={userMessageText}
           onChange={(event) => onUserMessageChange(event.target.value)}
@@ -75,7 +75,7 @@ export function ChatInputForm({
         />
         <button
           type="submit"
-          className="h-10 shrink-0 rounded-full bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
+          className="h-10 shrink-0 rounded-full bg-emerald-600 px-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60 sm:px-4"
           disabled={isChatInputDisabled}
         >
           {isSendingMessage ? "..." : "보내기"}

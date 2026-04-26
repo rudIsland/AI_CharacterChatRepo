@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 import { ChatMessageItem } from "@/features/chat/chat-message-item";
 import type { ChatMessageView } from "@/features/chat/chat-screen-state";
 
@@ -10,8 +12,17 @@ export function ChatMessageList({
   messageList,
   isOpeningSession,
 }: ChatMessageListProps) {
+  const messageEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messageEndRef.current?.scrollIntoView({
+      block: "end",
+      behavior: "smooth",
+    });
+  }, [messageList, isOpeningSession]);
+
   return (
-    <div className="chat-scroll flex h-full min-h-0 flex-col overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/50 p-3 pb-9 shadow-inner">
+    <div className="chat-scroll flex h-full min-h-0 flex-col overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/50 p-2 pb-8 shadow-inner sm:rounded-2xl sm:p-3 sm:pb-9">
       {!isOpeningSession && messageList.length === 0 && (
         <div className="flex h-full flex-col items-center justify-center space-y-3 opacity-60">
           <div
@@ -34,6 +45,7 @@ export function ChatMessageList({
         {messageList.map((message) => (
           <ChatMessageItem key={message.message_id} message={message} />
         ))}
+        <div ref={messageEndRef} aria-hidden="true" />
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ export function ChatScreen() {
     selectedAiModelProvider,
     userMessageText,
     isLoadingCharacterList,
+    isServerWakeNoticeVisible,
     isOpeningSession,
     isSendingMessage,
     usedTokenCount,
@@ -42,7 +43,7 @@ export function ChatScreen() {
     usedTokenCount >= tokenLimitCount;
 
   return (
-    <main className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,_#1e293b,_transparent_55%),radial-gradient(circle_at_bottom_right,_#0f172a,_transparent_45%),#020617] px-3 py-3 sm:px-4">
+    <main className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,_#1e293b,_transparent_55%),radial-gradient(circle_at_bottom_right,_#0f172a,_transparent_45%),#020617] px-2 py-2 sm:px-4 sm:py-3">
       <Link
         href="/admin/usage"
         className="fixed right-4 top-4 z-50 rounded-md border border-slate-700/50 bg-slate-800/50 px-3 py-1.5 text-xs font-medium text-slate-300 shadow-sm backdrop-blur-md transition-colors hover:bg-slate-700 hover:text-white"
@@ -50,7 +51,7 @@ export function ChatScreen() {
         관리자 접속
       </Link>
 
-      <section className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-panel sm:p-4">
+      <section className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900 p-2 shadow-panel sm:gap-3 sm:rounded-2xl sm:p-4">
         <ChatCharacterList
           characterList={characterList}
           selectedCharacterId={selectedCharacterId}
@@ -59,13 +60,23 @@ export function ChatScreen() {
           onCharacterSelect={selectCharacterAction}
         />
 
-        <section className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
+        {isServerWakeNoticeVisible && (
+          <section className="shrink-0 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-amber-100">
+            <p className="text-sm font-semibold">서버를 깨우는 중입니다.</p>
+            <p className="mt-1 text-xs leading-5 text-amber-100/80">
+              Render 서버는 첫 접속 시 응답까지 약 1분 정도 걸릴 수 있습니다.
+              잠시만 기다려 주세요.
+            </p>
+          </section>
+        )}
+
+        <section className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-2 overflow-hidden sm:gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1">
           <ChatCharacterProfile
             selectedCharacter={selectedCharacter}
             selectedCharacterImageUrl={selectedCharacterImageUrl}
           />
 
-          <section className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-slate-900 p-3">
+          <section className="flex min-h-0 flex-col rounded-xl border border-slate-800 bg-slate-900 p-2 sm:rounded-2xl sm:p-3">
             <header className="shrink-0 border-b border-slate-800 pb-2">
               <h2 className="text-lg font-semibold text-white">
                 {selectedCharacter?.character_name ?? "선택된 캐릭터 없음"}
