@@ -36,6 +36,7 @@ app.add_middleware(
 )
 
 
+
 @app.middleware("http")
 async def record_request_access(request: Request, call_next):
     request_path = request.url.path

@@ -15,7 +15,6 @@ from app.modules.chat.chat_schema import (
     ChatSessionSummary,
 )
 from app.modules.chat.chat_store import InMemoryChatStore, StoredChatMessage, StoredChatSession
-from app.modules.chat.chat_usage_tracker import daily_request_limiter
 
 
 class ChatSessionNotFoundError(Exception):
@@ -109,7 +108,6 @@ class ChatService:
         chat_session_id: str,
         user_message_text: str,
         ai_model_provider: AiModelProvider | None,
-        client_ip_address: str,
     ) -> ChatSessionMessageCreateResponse:
         # 메시지는 항상 기존 세션 안에 추가합니다.
         chat_session = self._chat_store.find_chat_session_by_id(chat_session_id)
@@ -129,10 +127,6 @@ class ChatService:
         # 요청에서 모델을 바꾸면 세션의 현재 모델도 같이 갱신합니다.
         selected_ai_model_provider = ai_model_provider or chat_session.ai_model_provider
         self._raise_if_ai_model_unavailable(selected_ai_model_provider)
-
-        # 클라이언트 IP를 기반으로 사용량 및 요청 수를 기록합니다.
-        daily_request_limiter.record_access(client_ip_address)
-        daily_request_limiter.record_request(client_ip_address)
 
         user_message = self._chat_store.append_chat_message(
             chat_session_id=chat_session_id,
