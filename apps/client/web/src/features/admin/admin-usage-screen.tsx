@@ -14,7 +14,8 @@ import type {
 } from "@/features/chat/chat-types";
 
 type IpUsageDisplayRow = DailyRequestIpUsage & {
-  displayName: string;
+  ipBadgeClassName: string;
+  ipBadgeLabel: string;
 };
 
 function formatLimitText(count: number, limit: number): string {
@@ -63,19 +64,20 @@ function buildIpUsageDisplayRowList(
     }
   );
 
-  let externalIpIndex = 0;
   return sortedIpUsageList.map((ipUsage) => {
     if (ipUsage.is_admin_client) {
       return {
         ...ipUsage,
-        displayName: `관리자 IP (${ipUsage.ip_address})`,
+        ipBadgeClassName:
+          "border-emerald-600/50 bg-emerald-950/70 text-emerald-200",
+        ipBadgeLabel: "관리자 IP",
       };
     }
 
-    externalIpIndex += 1;
     return {
       ...ipUsage,
-      displayName: `외부 IP ${externalIpIndex}`,
+      ipBadgeClassName: "border-slate-600 bg-slate-800 text-slate-300",
+      ipBadgeLabel: "외부 IP",
     };
   });
 }
@@ -327,9 +329,16 @@ export function AdminUsageScreen() {
                     className="border-t border-slate-800"
                   >
                     <td className="px-4 py-3">
-                      <span className="font-semibold text-slate-200">
-                        {ipUsage.displayName}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs text-slate-200">
+                          {ipUsage.ip_address}
+                        </span>
+                        <span
+                          className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${ipUsage.ipBadgeClassName}`}
+                        >
+                          {ipUsage.ipBadgeLabel}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       {formatLimitText(
