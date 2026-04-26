@@ -1,11 +1,13 @@
-import {
+import { createChatApiClient } from "@ai-character-chat/shared";
+import type {
   AiModelOptionListResponse,
+  AdminDailyRequestUsageResponse,
   AiModelProvider,
   CharacterSummary,
   ChatMessageCreateResponse,
   ChatMessageListResponse,
   ChatSessionSummary,
-  createChatApiClient,
+  ClientDailyRequestUsageResponse,
 } from "@ai-character-chat/shared";
 
 function getRequiredApiBaseUrl(): string {
@@ -37,6 +39,29 @@ export function buildApiAssetUrl(assetUrl: string): string {
 export async function fetchAiModelOptionList(): Promise<AiModelOptionListResponse> {
   // AI 모델 목록은 서버가 관리하므로 클라이언트는 목록을 요청해서 사용합니다.
   return chatApiClient.fetchAiModelOptionList();
+}
+
+export async function fetchDailyRequestUsage(): Promise<ClientDailyRequestUsageResponse> {
+  return chatApiClient.fetchDailyRequestUsage();
+}
+
+export async function fetchAdminDailyRequestUsage(
+  adminApiKey: string
+): Promise<AdminDailyRequestUsageResponse> {
+  return chatApiClient.fetchAdminDailyRequestUsage(adminApiKey);
+}
+
+export async function resetAdminDailyRequestUsage(
+  adminApiKey: string
+): Promise<AdminDailyRequestUsageResponse> {
+  return chatApiClient.resetAdminDailyRequestUsage(adminApiKey);
+}
+
+export async function resetAdminDailyRequestIpUsage(
+  adminApiKey: string,
+  ipAddress: string
+): Promise<AdminDailyRequestUsageResponse> {
+  return chatApiClient.resetAdminDailyRequestIpUsage(adminApiKey, ipAddress);
 }
 
 export async function fetchCharacterList(): Promise<CharacterSummary[]> {

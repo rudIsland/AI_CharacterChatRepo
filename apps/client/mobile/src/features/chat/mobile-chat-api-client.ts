@@ -1,11 +1,13 @@
-import {
+import { createChatApiClient } from "@ai-character-chat/shared";
+import type {
   AiModelOptionListResponse,
+  AdminDailyRequestUsageResponse,
   AiModelProvider,
   CharacterSummary,
   ChatMessageCreateResponse,
   ChatMessageListResponse,
   ChatSessionSummary,
-  createChatApiClient,
+  ClientDailyRequestUsageResponse,
 } from "@ai-character-chat/shared";
 
 function getRequiredApiBaseUrl(): string {
@@ -24,6 +26,29 @@ const chatApiClient = createChatApiClient({
 
 export async function fetchAiModelOptionList(): Promise<AiModelOptionListResponse> {
   return chatApiClient.fetchAiModelOptionList();
+}
+
+export async function fetchDailyRequestUsage(): Promise<ClientDailyRequestUsageResponse> {
+  return chatApiClient.fetchDailyRequestUsage();
+}
+
+export async function fetchAdminDailyRequestUsage(
+  adminApiKey: string
+): Promise<AdminDailyRequestUsageResponse> {
+  return chatApiClient.fetchAdminDailyRequestUsage(adminApiKey);
+}
+
+export async function resetAdminDailyRequestUsage(
+  adminApiKey: string
+): Promise<AdminDailyRequestUsageResponse> {
+  return chatApiClient.resetAdminDailyRequestUsage(adminApiKey);
+}
+
+export async function resetAdminDailyRequestIpUsage(
+  adminApiKey: string,
+  ipAddress: string
+): Promise<AdminDailyRequestUsageResponse> {
+  return chatApiClient.resetAdminDailyRequestIpUsage(adminApiKey, ipAddress);
 }
 
 export async function fetchCharacterList(): Promise<CharacterSummary[]> {

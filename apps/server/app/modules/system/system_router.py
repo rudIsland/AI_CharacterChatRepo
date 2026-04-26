@@ -1,11 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from app.core.app_settings import get_app_settings
 from app.modules.ai.ai_model_registry import get_available_ai_model_provider_list
 from app.modules.chat.chat_schema import AiModelProvider
+from app.modules.chat.chat_usage_tracker import (
+    daily_request_limiter,
+    get_request_ip_address,
+)
 from app.modules.system.system_schema import (
     AiModelOption,
     AiModelOptionListResponse,
+    DailyRequestUsageResponse,
     EchoRequest,
     EchoResponse,
     HealthResponse,
@@ -39,6 +44,23 @@ def get_ai_model_option_list() -> AiModelOptionListResponse:
         for ai_model_provider in get_available_ai_model_provider_list(app_settings)
     ]
     return AiModelOptionListResponse(ai_model_option_list=ai_model_option_list)
+
+
+@system_router.get("/daily-request-usage", response_model=DailyRequestUsageResponse)
+def get_daily_request_usage(request: Request) -> DailyRequestUsageResponse:
+    client_ip_address = get_request_ip_address(request)
+    usage_snapshot = daily_request_limiter.get_usage_snapshot()
+    return DailyRequestUsageResponse(
+        current_date=usage_snapshot.current_date.isoformat(),
+        daily_request_count=usage_snapshot.daily_request_count,
+        daily_request_limit=usage_snapshot.daily_request_limit,
+        client_ip_address=client_ip_address,
+        client_daily_request_count=usage_snapshot.daily_request_count_by_ip.get(
+            client_ip_address,
+            0,
+        ),
+        client_daily_request_limit=usage_snapshot.daily_request_limit_per_ip,
+    )
 
 
 def build_ai_model_option(ai_model_provider: AiModelProvider) -> AiModelOption:

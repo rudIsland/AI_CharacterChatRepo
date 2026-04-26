@@ -1,26 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   buildApiAssetUrl,
   createChatMessage,
   createChatSession,
+  fetchDailyRequestUsage,
   fetchAiModelOptionList,
   fetchCharacterList,
   fetchChatMessageList,
 } from "@/features/chat/chat-api-client";
-import {
+import type {
   AiModelOption,
   AiModelProvider,
   CharacterSummary,
   ChatMessage,
+  ClientDailyRequestUsageResponse,
 } from "@/features/chat/chat-types";
 
 const guestIdStorageKey = "guest_id";
 const defaultTokenLimitCount = 50_000;
 
-// 서버 응답을 기다리는 동안 화면에 먼저 보여주는 임시 메시지입니다.
 export type ChatMessageView = ChatMessage & {
-  // true이면 아직 서버 확정 응답으로 교체되지 않은 대기 메시지입니다.
   isPending?: boolean;
 };
 
@@ -29,7 +29,6 @@ function createGuestId(): string {
 }
 
 function getStoredGuestId(): string {
-  // 같은 브라우저에서는 같은 guest_id를 써서 캐릭터별 대화를 이어갑니다.
   if (typeof window === "undefined") {
     return "";
   }
@@ -52,7 +51,6 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
 }
 
 export function useChatScreenState() {
-  // 서버에서 받은 목록과 화면에서 선택한 값을 관리합니다.
   const [characterList, setCharacterList] = useState<CharacterSummary[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -68,6 +66,9 @@ export function useChatScreenState() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [usedTokenCount, setUsedTokenCount] = useState(0);
   const [tokenLimitCount, setTokenLimitCount] = useState(defaultTokenLimitCount);
+  const [dailyRequestUsage, setDailyRequestUsage] =
+    useState<ClientDailyRequestUsageResponse | null>(null);
+  const isSendingMessageRef = useRef(false);
 
   const selectedCharacter = useMemo(
     () =>
@@ -85,14 +86,32 @@ export function useChatScreenState() {
     return buildApiAssetUrl(character.character_image_url);
   };
 
+  const refreshChatMessageListAction = async (chatSessionId: string) => {
+    const messageListFromServer = await fetchChatMessageList(chatSessionId);
+    setMessageList(messageListFromServer.message_list);
+    setUsedTokenCount(messageListFromServer.used_token_count ?? 0);
+    setTokenLimitCount(
+      messageListFromServer.token_limit_count ?? defaultTokenLimitCount
+    );
+  };
+
+  const refreshDailyRequestUsageAction = async () => {
+    try {
+      const dailyRequestUsageFromServer = await fetchDailyRequestUsage();
+      setDailyRequestUsage(dailyRequestUsageFromServer);
+    } catch (error) {
+      setDailyRequestUsage(null);
+    }
+  };
+
   useEffect(() => {
     setGuestId(getStoredGuestId());
+    void refreshDailyRequestUsageAction();
   }, []);
 
   useEffect(() => {
     const loadAiModelList = async () => {
       try {
-        // AI 모델 목록은 클라이언트에 고정하지 않고 서버에서 받아옵니다.
         const aiModelListResponse = await fetchAiModelOptionList();
         const aiModelListFromServer = aiModelListResponse.ai_model_option_list;
 
@@ -113,7 +132,6 @@ export function useChatScreenState() {
   useEffect(() => {
     const loadCharacterList = async () => {
       try {
-        // 캐릭터도 서버에서 받아오며, 첫 번째 캐릭터를 기본 선택합니다.
         setIsLoadingCharacterList(true);
         const characterListFromServer = await fetchCharacterList();
 
@@ -138,7 +156,6 @@ export function useChatScreenState() {
 
     const openSelectedCharacterSession = async () => {
       try {
-        // 캐릭터를 선택하면 해당 캐릭터의 단일 세션을 열거나 새로 만듭니다.
         setIsOpeningSession(true);
         setErrorMessage(null);
 
@@ -185,7 +202,6 @@ export function useChatScreenState() {
   }, [guestId, selectedCharacterId, selectedAiModelProvider]);
 
   const selectCharacterAction = (characterId: string) => {
-    // 클릭한 캐릭터의 기존 대화를 바로 열 수 있도록 선택값을 바꿉니다.
     setSelectedCharacterId(characterId);
     setActiveSessionId(null);
     setMessageList([]);
@@ -201,20 +217,22 @@ export function useChatScreenState() {
       !selectedCharacterId ||
       !selectedAiModelProvider ||
       isOpeningSession ||
-      usedTokenCount >= tokenLimitCount
+      usedTokenCount >= tokenLimitCount ||
+      isSendingMessageRef.current
     ) {
       return;
     }
 
+    let chatSessionId = activeSessionId;
+
     try {
+      isSendingMessageRef.current = true;
       setIsSendingMessage(true);
       setErrorMessage(null);
 
       const temporaryCreatedAt = new Date().toISOString();
       const temporaryUserMessageId = `temp-user-${Date.now()}`;
       const temporaryAssistantMessageId = `temp-assistant-${Date.now()}`;
-
-      // 서버 응답 전까지 사용자가 보낸 메시지와 대기 중인 AI 답변을 먼저 보여줍니다.
       const temporaryUserMessage: ChatMessageView = {
         message_id: temporaryUserMessageId,
         role: "user",
@@ -236,7 +254,6 @@ export function useChatScreenState() {
       ]);
       setUserMessageText("");
 
-      let chatSessionId = activeSessionId;
       if (!chatSessionId) {
         const openedChatSession = await createChatSession(
           selectedCharacterId,
@@ -253,7 +270,6 @@ export function useChatScreenState() {
         selectedAiModelProvider
       );
 
-      // 서버에서 확정된 메시지로 임시 메시지를 교체합니다.
       setMessageList((previousMessageList) =>
         previousMessageList.map((message) => {
           if (message.message_id === temporaryUserMessageId) {
@@ -269,7 +285,16 @@ export function useChatScreenState() {
       setTokenLimitCount(
         createdMessage.token_limit_count ?? defaultTokenLimitCount
       );
+      await refreshDailyRequestUsageAction();
     } catch (error) {
+      if (chatSessionId) {
+        try {
+          await refreshChatMessageListAction(chatSessionId);
+        } catch (refreshError) {
+          // 서버 상태 동기화도 실패하면 임시 실패 메시지를 유지합니다.
+        }
+      }
+
       setErrorMessage(
         getErrorMessage(error, "메시지를 보내지 못했습니다. 다시 시도해 주세요.")
       );
@@ -286,6 +311,7 @@ export function useChatScreenState() {
         })
       );
     } finally {
+      isSendingMessageRef.current = false;
       setIsSendingMessage(false);
     }
   };
@@ -305,6 +331,7 @@ export function useChatScreenState() {
     isSendingMessage,
     usedTokenCount,
     tokenLimitCount,
+    dailyRequestUsage,
     errorMessage,
     setSelectedAiModelProvider,
     setUserMessageText,

@@ -16,7 +16,10 @@ from app.modules.chat.chat_service import (
     ChatSessionTokenLimitExceededError,
 )
 from app.modules.chat.chat_store import InMemoryChatStore
-from app.modules.chat.daily_request_limiter import DailyRequestLimiter
+from app.modules.chat.chat_usage_tracker import (
+    daily_request_limiter,
+    get_request_ip_address,
+)
 
 chat_router = APIRouter(prefix="/chat-sessions", tags=["chat"])
 
@@ -28,12 +31,6 @@ chat_service = ChatService(
     ai_reply_service=ai_reply_service,
     app_settings=app_settings,
 )
-daily_request_limiter = DailyRequestLimiter(
-    daily_request_limit=app_settings.daily_ai_request_limit,
-    daily_request_limit_per_ip=app_settings.daily_ai_request_limit_per_ip,
-)
-
-
 @chat_router.post("", response_model=ChatSessionSummary)
 async def create_chat_session(
     request_body: ChatSessionCreateRequest,
@@ -119,16 +116,3 @@ async def create_chat_message(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         ) from error
-
-
-def get_request_ip_address(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
-        forwarded_ip_address = forwarded_for.split(",")[0].strip()
-        if forwarded_ip_address:
-            return forwarded_ip_address
-
-    if request.client is None:
-        return "unknown"
-
-    return request.client.host
