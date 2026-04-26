@@ -92,6 +92,28 @@ class DailyRequestLimiter:
 
             self._daily_request_count_by_ip[ip_address] = current_ip_request_count - 1
 
+    def set_ip_request_count(self, ip_address: str, request_count: int) -> None:
+        safe_request_count = max(0, request_count)
+
+        with self._write_lock:
+            self._reset_count_if_date_changed()
+
+            current_ip_request_count = self._daily_request_count_by_ip.get(
+                ip_address,
+                0,
+            )
+            self._daily_request_count = max(
+                0,
+                self._daily_request_count - current_ip_request_count,
+            )
+
+            if safe_request_count == 0:
+                self._daily_request_count_by_ip.pop(ip_address, None)
+                return
+
+            self._daily_request_count_by_ip[ip_address] = safe_request_count
+            self._daily_request_count += safe_request_count
+
     def get_usage_snapshot(self) -> DailyRequestUsageSnapshot:
         with self._write_lock:
             self._reset_count_if_date_changed()

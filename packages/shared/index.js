@@ -77,6 +77,8 @@
 /**
  * @typedef {{
  *   current_date: string;
+ *   admin_client_ip_address: string;
+ *   client_ip_address: string;
  *   daily_request_count: number;
  *   daily_request_limit: number;
  *   client_ip_address: string;
@@ -88,6 +90,7 @@
 /**
  * @typedef {{
  *   ip_address: string;
+ *   is_admin_client: boolean;
  *   daily_request_count: number;
  *   daily_request_limit: number;
  *   access_count: number;
@@ -417,6 +420,28 @@ export function createChatApiClient(params) {
           method: "POST",
           headers: buildAdminRequestHeaders(adminApiKey),
           body: JSON.stringify({ ip_address: ipAddress }),
+        },
+        requestOptions
+      );
+    },
+
+    /**
+     * @param {string} adminApiKey
+     * @param {string} ipAddress
+     * @param {number} dailyRequestCount
+     * @returns {Promise<AdminDailyRequestUsageResponse>}
+     */
+    updateAdminDailyRequestIpCount(adminApiKey, ipAddress, dailyRequestCount) {
+      return requestJson(
+        apiBaseUrl,
+        "/admin/usage/ip/request-count",
+        {
+          method: "POST",
+          headers: buildAdminRequestHeaders(adminApiKey),
+          body: JSON.stringify({
+            ip_address: ipAddress,
+            daily_request_count: dailyRequestCount,
+          }),
         },
         requestOptions
       );

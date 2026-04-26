@@ -67,6 +67,7 @@ export interface ClientDailyRequestUsageResponse {
 
 export interface DailyRequestIpUsage {
   ip_address: string;
+  is_admin_client: boolean;
   daily_request_count: number;
   daily_request_limit: number;
   access_count: number;
@@ -76,6 +77,7 @@ export interface DailyRequestIpUsage {
 export interface AdminDailyRequestUsageResponse {
   current_date: string;
   admin_client_ip_address: string;
+  client_ip_address: string;
   daily_request_count: number;
   daily_request_limit: number;
   daily_request_limit_per_ip: number;
@@ -96,6 +98,11 @@ export interface ChatApiClient {
   resetAdminDailyRequestIpUsage(
     adminApiKey: string,
     ipAddress: string
+  ): Promise<AdminDailyRequestUsageResponse>;
+  updateAdminDailyRequestIpCount(
+    adminApiKey: string,
+    ipAddress: string,
+    dailyRequestCount: number
   ): Promise<AdminDailyRequestUsageResponse>;
   fetchAiModelOptionList(): Promise<AiModelOptionListResponse>;
   fetchCharacterList(): Promise<CharacterSummary[]>;

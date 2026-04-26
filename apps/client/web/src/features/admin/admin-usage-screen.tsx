@@ -1,13 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   fetchAdminDailyRequestUsage,
   resetAdminDailyRequestIpUsage,
   resetAdminDailyRequestUsage,
+  updateAdminDailyRequestIpCount,
 } from "@/features/chat/chat-api-client";
-import type { AdminDailyRequestUsageResponse } from "@/features/chat/chat-types";
+import type {
+  AdminDailyRequestUsageResponse,
+  DailyRequestIpUsage,
+} from "@/features/chat/chat-types";
+
+type IpUsageDisplayRow = DailyRequestIpUsage & {
+  displayName: string;
+};
 
 function formatLimitText(count: number, limit: number): string {
   if (limit === 0) {
@@ -27,16 +35,72 @@ function formatLastAccessAt(lastAccessAt: string | null): string {
   });
 }
 
+function getErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallbackMessage;
+}
+
+function isAdminAuthError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const statusCode = (error as { statusCode?: unknown }).statusCode;
+  return statusCode === 401 || statusCode === 404;
+}
+
+function buildIpUsageDisplayRowList(
+  usage: AdminDailyRequestUsageResponse | null
+): IpUsageDisplayRow[] {
+  const sortedIpUsageList = [...(usage?.ip_usage_list ?? [])].sort(
+    (left, right) => {
+      if (left.is_admin_client !== right.is_admin_client) {
+        return left.is_admin_client ? -1 : 1;
+      }
+      return right.access_count - left.access_count;
+    }
+  );
+
+  let externalIpIndex = 0;
+  return sortedIpUsageList.map((ipUsage) => {
+    if (ipUsage.is_admin_client) {
+      return {
+        ...ipUsage,
+        displayName: `관리자 IP (${ipUsage.ip_address})`,
+      };
+    }
+
+    externalIpIndex += 1;
+    return {
+      ...ipUsage,
+      displayName: `외부 IP ${externalIpIndex}`,
+    };
+  });
+}
+
 export function AdminUsageScreen() {
   const [adminApiKey, setAdminApiKey] = useState("");
   const [usage, setUsage] = useState<AdminDailyRequestUsageResponse | null>(null);
+  const [requestCountTextByIp, setRequestCountTextByIp] = useState<
+    Record<string, string>
+  >({});
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const sortedIpUsageList = useMemo(() => {
-    return [...(usage?.ip_usage_list ?? [])].sort((left, right) => {
-      return right.access_count - left.access_count;
-    });
+  const ipUsageDisplayRowList = useMemo(() => {
+    return buildIpUsageDisplayRowList(usage);
+  }, [usage]);
+
+  useEffect(() => {
+    const nextRequestCountTextByIp: Record<string, string> = {};
+    for (const ipUsage of usage?.ip_usage_list ?? []) {
+      nextRequestCountTextByIp[ipUsage.ip_address] = String(
+        ipUsage.daily_request_count
+      );
+    }
+    setRequestCountTextByIp(nextRequestCountTextByIp);
   }, [usage]);
 
   const loadUsageAction = async (apiKey = adminApiKey) => {
@@ -53,10 +117,9 @@ export function AdminUsageScreen() {
       setUsage(usageFromServer);
     } catch (error) {
       setUsage(null);
+      setRequestCountTextByIp({});
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "사용량 정보를 불러오지 못했습니다."
+        getErrorMessage(error, "사용량 정보를 불러오지 못했습니다.")
       );
     } finally {
       setIsLoading(false);
@@ -77,8 +140,12 @@ export function AdminUsageScreen() {
       setUsage(usageFromServer);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "전체 사용량 초기화에 실패했습니다."
+        getErrorMessage(error, "전체 사용량 초기화에 실패했습니다.")
       );
+      if (isAdminAuthError(error)) {
+        setUsage(null);
+        setRequestCountTextByIp({});
+      }
     } finally {
       setIsLoading(false);
     }
@@ -100,13 +167,56 @@ export function AdminUsageScreen() {
       );
       setUsage(usageFromServer);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "IP 사용량 초기화에 실패했습니다."
-      );
+      setErrorMessage(getErrorMessage(error, "IP 사용량 초기화에 실패했습니다."));
+      if (isAdminAuthError(error)) {
+        setUsage(null);
+        setRequestCountTextByIp({});
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  const updateIpRequestCountAction = async (ipAddress: string) => {
+    const cleanApiKey = adminApiKey.trim();
+    if (!cleanApiKey) {
+      setErrorMessage("관리자 키를 입력해 주세요.");
+      return;
+    }
+
+    const requestCountText = requestCountTextByIp[ipAddress]?.trim() ?? "";
+    const requestCount = Number(requestCountText);
+    if (
+      !requestCountText ||
+      !Number.isInteger(requestCount) ||
+      requestCount < 0
+    ) {
+      setErrorMessage("AI 요청 수는 0 이상의 정수로 입력해 주세요.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setErrorMessage(null);
+      const usageFromServer = await updateAdminDailyRequestIpCount(
+        cleanApiKey,
+        ipAddress,
+        requestCount
+      );
+      setUsage(usageFromServer);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "IP 사용량 조절에 실패했습니다."));
+      if (isAdminAuthError(error)) {
+        setUsage(null);
+        setRequestCountTextByIp({});
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const adminIpAddress =
+    usage?.admin_client_ip_address ?? usage?.client_ip_address ?? "-";
 
   return (
     <main className="min-h-dvh bg-slate-950 px-4 py-4 text-slate-100">
@@ -144,7 +254,13 @@ export function AdminUsageScreen() {
           </p>
         )}
 
-        <section className="grid gap-3 md:grid-cols-3">
+        <section className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+            <p className="text-xs font-semibold text-slate-500">관리자 접속 IP</p>
+            <p className="mt-2 break-all font-mono text-lg font-semibold">
+              {adminIpAddress}
+            </p>
+          </div>
           <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
             <p className="text-xs font-semibold text-slate-500">전체 AI 요청</p>
             <p className="mt-2 text-xl font-semibold">
@@ -165,16 +281,16 @@ export function AdminUsageScreen() {
             </p>
           </div>
           <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-            <p className="text-xs font-semibold text-slate-500">접속 IP</p>
+            <p className="text-xs font-semibold text-slate-500">접속 IP 수</p>
             <p className="mt-2 text-xl font-semibold">
-              {usage ? sortedIpUsageList.length.toLocaleString("ko-KR") : "-"}
+              {usage ? ipUsageDisplayRowList.length.toLocaleString("ko-KR") : "-"}
             </p>
           </div>
         </section>
 
         <section className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900">
           <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
-            <h2 className="text-sm font-semibold">IP 사용량</h2>
+            <h2 className="text-sm font-semibold">IP별 사용량</h2>
             <button
               type="button"
               className="rounded-md border border-rose-800 px-3 py-1.5 text-xs font-semibold text-rose-300 transition hover:bg-rose-950 disabled:opacity-60"
@@ -186,18 +302,18 @@ export function AdminUsageScreen() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[900px] border-collapse text-left text-sm">
               <thead className="bg-slate-950 text-xs text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">IP</th>
+                  <th className="px-4 py-3 font-semibold">IP 구분</th>
                   <th className="px-4 py-3 font-semibold">AI 요청</th>
                   <th className="px-4 py-3 font-semibold">접속</th>
                   <th className="px-4 py-3 font-semibold">마지막 접속</th>
-                  <th className="px-4 py-3 font-semibold">관리</th>
+                  <th className="px-4 py-3 font-semibold">AI 사용량 조절</th>
                 </tr>
               </thead>
               <tbody>
-                {sortedIpUsageList.length === 0 && (
+                {ipUsageDisplayRowList.length === 0 && (
                   <tr>
                     <td className="px-4 py-6 text-center text-slate-500" colSpan={5}>
                       표시할 IP가 없습니다.
@@ -205,13 +321,15 @@ export function AdminUsageScreen() {
                   </tr>
                 )}
 
-                {sortedIpUsageList.map((ipUsage) => (
+                {ipUsageDisplayRowList.map((ipUsage) => (
                   <tr
                     key={ipUsage.ip_address}
                     className="border-t border-slate-800"
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-slate-200">
-                      {ipUsage.ip_address}
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-slate-200">
+                        {ipUsage.displayName}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       {formatLimitText(
@@ -226,14 +344,39 @@ export function AdminUsageScreen() {
                       {formatLastAccessAt(ipUsage.last_access_at)}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-60"
-                        disabled={isLoading}
-                        onClick={() => void resetIpUsageAction(ipUsage.ip_address)}
-                      >
-                        초기화
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <input
+                          className="h-9 w-24 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-white outline-none ring-emerald-500 transition focus:ring-2"
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={requestCountTextByIp[ipUsage.ip_address] ?? ""}
+                          onChange={(event) =>
+                            setRequestCountTextByIp((previousMap) => ({
+                              ...previousMap,
+                              [ipUsage.ip_address]: event.target.value,
+                            }))
+                          }
+                        />
+                        <button
+                          type="button"
+                          className="h-9 rounded-md border border-emerald-700 px-3 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-950 disabled:opacity-60"
+                          disabled={isLoading}
+                          onClick={() =>
+                            void updateIpRequestCountAction(ipUsage.ip_address)
+                          }
+                        >
+                          적용
+                        </button>
+                        <button
+                          type="button"
+                          className="h-9 rounded-md border border-slate-700 px-3 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-60"
+                          disabled={isLoading}
+                          onClick={() => void resetIpUsageAction(ipUsage.ip_address)}
+                        >
+                          초기화
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

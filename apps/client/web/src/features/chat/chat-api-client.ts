@@ -64,6 +64,18 @@ export async function resetAdminDailyRequestIpUsage(
   return chatApiClient.resetAdminDailyRequestIpUsage(adminApiKey, ipAddress);
 }
 
+export async function updateAdminDailyRequestIpCount(
+  adminApiKey: string,
+  ipAddress: string,
+  dailyRequestCount: number
+): Promise<AdminDailyRequestUsageResponse> {
+  return chatApiClient.updateAdminDailyRequestIpCount(
+    adminApiKey,
+    ipAddress,
+    dailyRequestCount
+  );
+}
+
 export async function fetchCharacterList(): Promise<CharacterSummary[]> {
   // 캐릭터 정보도 서버가 관리하므로 서버에서 받아옵니다.
   return chatApiClient.fetchCharacterList();
