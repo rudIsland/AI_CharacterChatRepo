@@ -43,7 +43,7 @@ export function ChatScreen() {
     usedTokenCount >= tokenLimitCount;
 
   return (
-    <main className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,_#1e293b,_transparent_55%),radial-gradient(circle_at_bottom_right,_#0f172a,_transparent_45%),#020617] px-2 py-2 sm:px-4 sm:py-3">
+    <main className="min-h-dvh overflow-y-auto bg-[radial-gradient(circle_at_top_left,_#1e293b,_transparent_55%),radial-gradient(circle_at_bottom_right,_#0f172a,_transparent_45%),#020617] px-2 py-2 sm:px-4 sm:py-3">
       <Link
         href="/admin/usage"
         className="fixed right-4 top-4 z-50 rounded-md border border-slate-700/50 bg-slate-800/50 px-3 py-1.5 text-xs font-medium text-slate-300 shadow-sm backdrop-blur-md transition-colors hover:bg-slate-700 hover:text-white"
@@ -51,7 +51,7 @@ export function ChatScreen() {
         관리자 접속
       </Link>
 
-      <section className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900 p-2 shadow-panel sm:gap-3 sm:rounded-2xl sm:p-4">
+      <section className="mx-auto flex min-h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900 p-2 shadow-panel sm:min-h-[calc(100dvh-1.5rem)] sm:gap-3 sm:rounded-2xl sm:p-4">
         <ChatCharacterList
           characterList={characterList}
           selectedCharacterId={selectedCharacterId}
@@ -70,11 +70,13 @@ export function ChatScreen() {
           </section>
         )}
 
-        <section className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-2 overflow-hidden sm:gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1">
-          <ChatCharacterProfile
-            selectedCharacter={selectedCharacter}
-            selectedCharacterImageUrl={selectedCharacterImageUrl}
-          />
+        <section className="grid min-h-[560px] flex-1 grid-rows-[minmax(0,1fr)] gap-2 sm:min-h-[640px] sm:gap-3 md:grid-rows-[auto_minmax(0,1fr)] lg:min-h-0 lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1">
+          <div className="hidden md:block lg:min-h-0">
+            <ChatCharacterProfile
+              selectedCharacter={selectedCharacter}
+              selectedCharacterImageUrl={selectedCharacterImageUrl}
+            />
+          </div>
 
           <section className="flex min-h-0 flex-col rounded-xl border border-slate-800 bg-slate-900 p-2 sm:rounded-2xl sm:p-3">
             <header className="shrink-0 border-b border-slate-800 pb-2">
