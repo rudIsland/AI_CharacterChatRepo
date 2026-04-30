@@ -5,7 +5,10 @@ from app.modules.ai.ai_model_registry import (
     is_ai_model_provider_available,
 )
 from app.core.app_settings import AppSettings
-from app.modules.character.character_data import find_character_profile_by_id
+from app.modules.character.character_data import (
+    find_character_easter_egg_reply,
+    find_character_profile_by_id,
+)
 from app.modules.chat.chat_schema import (
     AiModelProvider,
     CHAT_SESSION_TOKEN_LIMIT_COUNT,
@@ -133,6 +136,26 @@ class ChatService:
             role="user",
             message_text=user_message_text,
         )
+
+        fixed_reply_text = find_character_easter_egg_reply(
+            character_id=character.character_id,
+            user_message_text=user_message_text,
+        )
+        if fixed_reply_text is not None:
+            assistant_message = self._chat_store.append_chat_message(
+                chat_session_id=chat_session_id,
+                role="assistant",
+                message_text=fixed_reply_text,
+            )
+            return ChatSessionMessageCreateResponse(
+                chat_session_id=chat_session_id,
+                user_message=self._build_chat_message(user_message),
+                assistant_message=self._build_chat_message(assistant_message),
+                used_token_count=self._calculate_used_token_count(
+                    chat_session.message_list
+                ),
+                token_limit_count=CHAT_SESSION_TOKEN_LIMIT_COUNT,
+            )
 
         # 방금 저장한 사용자 메시지까지 포함해서 AI에게 대화 맥락을 보냅니다.
         current_message_list = self._chat_store.list_chat_message_by_session_id(

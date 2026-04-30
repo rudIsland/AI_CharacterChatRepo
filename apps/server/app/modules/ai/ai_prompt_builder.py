@@ -91,6 +91,8 @@ class AiPromptBuilder:
     ) -> str:
         return (
             f"Role: {character_prompt_profile.character_prompt_summary}\n"
+            f"Character detail: {character_prompt_profile.character_prompt}\n"
+            f"Response rule: {character_prompt_profile.character_response_rule}\n"
             "Rules: Korean by default. Stay in character. Reply only as the character.\n"
             "No analysis, system talk, repeated user text, <think>, or /no_think.\n"
             "Casual chat: 1-3 short lines, one idea per line. No lists/headings unless asked.\n"
@@ -104,6 +106,8 @@ class AiPromptBuilder:
         # Local AI가 추론 과정을 말하지 않고 캐릭터 답변만 하도록 짧게 지시합니다.
         return (
             f"캐릭터: {character_prompt_profile.character_prompt_summary}\n"
+            f"상세 성격: {character_prompt_profile.character_prompt}\n"
+            f"응답 규칙: {character_prompt_profile.character_response_rule}\n"
             "규칙:\n"
             "- 한국어 대화체로 캐릭터 최종 답변만 한다.\n"
             "- 분석, 추론, 시스템 설명, 사용자 말 반복, <think>, /no_think 금지.\n"
