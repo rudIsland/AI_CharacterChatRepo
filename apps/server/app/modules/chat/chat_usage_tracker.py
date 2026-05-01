@@ -5,10 +5,7 @@ from app.modules.chat.daily_request_limiter import DailyRequestLimiter
 
 app_settings = get_app_settings()
 
-daily_request_limiter = DailyRequestLimiter(
-    daily_request_limit=app_settings.daily_ai_request_limit,
-    daily_request_limit_per_ip=app_settings.daily_ai_request_limit_per_ip,
-)
+daily_request_limiter = DailyRequestLimiter(daily_request_limit=app_settings.daily_ai_request_limit, daily_request_limit_per_ip=app_settings.daily_ai_request_limit_per_ip)
 
 
 def get_request_ip_address(request: Request) -> str:

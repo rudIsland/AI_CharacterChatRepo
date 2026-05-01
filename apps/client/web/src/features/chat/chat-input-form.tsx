@@ -2,34 +2,32 @@ import type { KeyboardEvent } from "react";
 
 import { ChatAiModelSelect } from "@/features/chat/chat-ai-model-select";
 import { USER_MESSAGE_MAX_LENGTH } from "@/features/chat/chat-types";
-import type { AiModelOption, AiModelProvider } from "@/features/chat/chat-types";
+import type { AiModelId, AiModelOption } from "@/features/chat/chat-types";
 
 type ChatInputFormProps = {
   aiModelOptionList: AiModelOption[];
-  selectedAiModelProvider: AiModelProvider | "";
+  selectedAiModelId: AiModelId | "";
   userMessageText: string;
   isOpeningSession: boolean;
   isSendingMessage: boolean;
   isChatInputDisabled: boolean;
-  onAiModelProviderChange: (aiModelProvider: AiModelProvider) => void;
+  onAiModelIdChange: (aiModelId: AiModelId) => void;
   onUserMessageChange: (messageText: string) => void;
   onMessageSend: () => void;
 };
 
 export function ChatInputForm({
   aiModelOptionList,
-  selectedAiModelProvider,
+  selectedAiModelId,
   userMessageText,
   isOpeningSession,
   isSendingMessage,
   isChatInputDisabled,
-  onAiModelProviderChange,
+  onAiModelIdChange,
   onUserMessageChange,
   onMessageSend,
 }: ChatInputFormProps) {
-  const userMessageKeyDownHandle = (
-    event: KeyboardEvent<HTMLTextAreaElement>
-  ) => {
+  const userMessageKeyDownHandle = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     const shouldInsertLineBreak =
       event.key === "Enter" && (event.shiftKey || event.altKey);
 
@@ -56,11 +54,11 @@ export function ChatInputForm({
       <div className="flex flex-row items-end gap-1.5 sm:gap-2">
         <ChatAiModelSelect
           aiModelOptionList={aiModelOptionList}
-          selectedAiModelProvider={selectedAiModelProvider}
+          selectedAiModelId={selectedAiModelId}
           isDisabled={
             isOpeningSession || isSendingMessage || aiModelOptionList.length === 0
           }
-          onAiModelProviderChange={onAiModelProviderChange}
+          onAiModelIdChange={onAiModelIdChange}
         />
 
         <textarea

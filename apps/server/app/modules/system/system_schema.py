@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.modules.chat.chat_schema import AiModelProvider
+from app.modules.chat.chat_schema import AiModelId, AiModelProvider
 
 
 class HealthResponse(BaseModel):
@@ -13,11 +13,7 @@ class PingResponse(BaseModel):
 
 
 class EchoRequest(BaseModel):
-    message: str = Field(
-        min_length=1,
-        max_length=1000,
-        description="서버가 그대로 되돌려줄 테스트 메시지입니다.",
-    )
+    message: str = Field(min_length=1, max_length=1000, description="서버가 그대로 되돌려줄 테스트 메시지입니다.")
 
 
 class EchoResponse(BaseModel):
@@ -26,8 +22,9 @@ class EchoResponse(BaseModel):
 
 
 class AiModelOption(BaseModel):
-    ai_model_provider: AiModelProvider = Field(description="클라이언트가 서버에 전달할 AI 제공자 코드입니다.")
-    ai_model_name: str = Field(description="서버 환경변수에서 관리하는 실제 모델 이름입니다.")
+    ai_model_id: AiModelId = Field(description="클라이언트가 서버에 전달할 AI 모델 ID입니다.")
+    ai_model_provider: AiModelProvider = Field(description="실제 API 호출에 사용할 AI 제공자입니다.")
+    ai_model_name: str = Field(description="제공자 API에 전달할 실제 모델 이름입니다.")
     ai_model_label: str = Field(description="클라이언트 화면에 보여줄 모델 표시 이름입니다.")
 
 

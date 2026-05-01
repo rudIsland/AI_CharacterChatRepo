@@ -3,8 +3,19 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-# 클라이언트가 선택할 수 있는 AI 제공자 이름입니다.
-AiModelProvider = Literal["gpt", "gemini", "local_ai"]
+# AI 모델을 실제로 호출할 제공자입니다.
+AiModelProvider = Literal["openai", "gemini", "local_ai"]
+
+# 클라이언트가 선택하는 모델 옵션 ID입니다.
+AiModelId = Literal[
+    "openai_gpt_4_1_mini",
+    "openai_gpt_5_4_mini",
+    "gemini_3_1_flash_lite",
+    "gemini_2_5_flash",
+    "gemini_2_5_flash_lite",
+    "local_ai",
+]
+DEFAULT_AI_MODEL_ID: AiModelId = "openai_gpt_4_1_mini"
 
 # 한 대화 세션에서 사용할 수 있는 전체 토큰 할당량입니다.
 CHAT_SESSION_TOKEN_LIMIT_COUNT = 20_000
@@ -23,9 +34,9 @@ class ChatSessionCreateRequest(BaseModel):
         max_length=50,
         description="로그인 없이 사용자를 구분하기 위한 임시 사용자 ID입니다.",
     )
-    ai_model_provider: AiModelProvider = Field(
-        default="gpt",
-        description="이 대화에서 사용할 AI 제공자입니다.",
+    ai_model_id: AiModelId = Field(
+        default=DEFAULT_AI_MODEL_ID,
+        description="이 대화에서 사용할 AI 모델 ID입니다.",
     )
 
 
@@ -33,8 +44,8 @@ class ChatSessionSummary(BaseModel):
     chat_session_id: str = Field(description="대화 세션을 구분하는 고유 ID입니다.")
     character_id: str = Field(description="이 세션에서 대화하는 캐릭터의 고유 ID입니다.")
     guest_id: str = Field(description="이 세션을 가진 임시 사용자 ID입니다.")
-    ai_model_provider: AiModelProvider = Field(
-        description="이 세션에서 마지막으로 선택한 AI 제공자입니다."
+    ai_model_id: AiModelId = Field(
+        description="이 세션에서 마지막으로 선택한 AI 모델 ID입니다."
     )
     created_at: datetime = Field(description="세션이 처음 만들어진 시간입니다.")
 
@@ -66,9 +77,9 @@ class ChatMessageCreateRequest(BaseModel):
         max_length=USER_MESSAGE_MAX_LENGTH,
         description="사용자가 새로 보낸 메시지 내용입니다.",
     )
-    ai_model_provider: AiModelProvider | None = Field(
+    ai_model_id: AiModelId | None = Field(
         default=None,
-        description="이번 메시지부터 사용할 AI 제공자입니다. 없으면 세션의 기존 값을 사용합니다.",
+        description="이번 메시지부터 사용할 AI 모델 ID입니다. 없으면 세션의 기존 값을 사용합니다.",
     )
 
 

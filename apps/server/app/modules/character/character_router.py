@@ -18,8 +18,5 @@ def get_character_list() -> list[CharacterSummary]:
 def get_character_detail(character_id: str) -> CharacterDetail:
     character = find_character_detail_by_id(character_id)
     if character is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Character not found: {character_id}",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Character not found: {character_id}")
     return character

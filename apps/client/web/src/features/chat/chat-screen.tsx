@@ -19,7 +19,7 @@ export function ChatScreen() {
     selectedCharacterId,
     messageList,
     aiModelOptionList,
-    selectedAiModelProvider,
+    selectedAiModelId,
     userMessageText,
     isLoadingCharacterList,
     isServerWakeNoticeVisible,
@@ -29,7 +29,7 @@ export function ChatScreen() {
     tokenLimitCount,
     dailyRequestUsage,
     errorMessage,
-    setSelectedAiModelProvider,
+    setSelectedAiModelId,
     setUserMessageText,
     selectCharacterAction,
     sendMessageAction,
@@ -37,7 +37,7 @@ export function ChatScreen() {
 
   const isChatInputDisabled =
     !selectedCharacterId ||
-    !selectedAiModelProvider ||
+    !selectedAiModelId ||
     isOpeningSession ||
     isSendingMessage ||
     usedTokenCount >= tokenLimitCount;
@@ -104,12 +104,12 @@ export function ChatScreen() {
 
             <ChatInputForm
               aiModelOptionList={aiModelOptionList}
-              selectedAiModelProvider={selectedAiModelProvider}
+              selectedAiModelId={selectedAiModelId}
               userMessageText={userMessageText}
               isOpeningSession={isOpeningSession}
               isSendingMessage={isSendingMessage}
               isChatInputDisabled={isChatInputDisabled}
-              onAiModelProviderChange={setSelectedAiModelProvider}
+              onAiModelIdChange={setSelectedAiModelId}
               onUserMessageChange={setUserMessageText}
               onMessageSend={sendMessageAction}
             />

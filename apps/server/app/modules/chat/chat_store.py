@@ -4,7 +4,7 @@ from threading import Lock
 from typing import Literal
 from uuid import uuid4
 
-from app.modules.chat.chat_schema import AiModelProvider
+from app.modules.chat.chat_schema import AiModelId
 
 
 @dataclass
@@ -15,8 +15,8 @@ class StoredChatSession:
     character_id: str
     # 로그인 전에도 같은 사용자를 구분하기 위한 임시 사용자 ID입니다.
     guest_id: str
-    # 이 세션에서 마지막으로 선택한 AI 제공자입니다.
-    ai_model_provider: AiModelProvider
+    # 이 세션에서 마지막으로 선택한 AI 모델 ID입니다.
+    ai_model_id: AiModelId
     # 세션이 처음 만들어진 시간입니다.
     created_at: datetime
     # 이 세션에 속한 사용자와 AI 메시지를 순서대로 저장합니다.
@@ -52,24 +52,20 @@ class InMemoryChatStore:
         self,
         character_id: str,
         guest_id: str,
-        ai_model_provider: AiModelProvider,
+        ai_model_id: AiModelId,
     ) -> StoredChatSession:
         with self._write_lock:
             chat_session = StoredChatSession(
                 chat_session_id=str(uuid4()),
                 character_id=character_id,
                 guest_id=guest_id,
-                ai_model_provider=ai_model_provider,
+                ai_model_id=ai_model_id,
                 created_at=datetime.now(timezone.utc),
             )
             self._chat_session_map[chat_session.chat_session_id] = chat_session
             return chat_session
 
-    def find_chat_session_by_guest_id_and_character_id(
-        self,
-        guest_id: str,
-        character_id: str,
-    ) -> StoredChatSession | None:
+    def find_chat_session_by_guest_id_and_character_id(self, guest_id: str, character_id: str) -> StoredChatSession | None:
         for chat_session in self._chat_session_map.values():
             if (
                 chat_session.guest_id == guest_id
@@ -78,16 +74,12 @@ class InMemoryChatStore:
                 return chat_session
         return None
 
-    def update_chat_session_ai_model_provider(
-        self,
-        chat_session_id: str,
-        ai_model_provider: AiModelProvider,
-    ) -> None:
+    def update_chat_session_ai_model_id(self, chat_session_id: str, ai_model_id: AiModelId) -> None:
         with self._write_lock:
             chat_session = self._chat_session_map.get(chat_session_id)
             if chat_session is None:
                 return
-            chat_session.ai_model_provider = ai_model_provider
+            chat_session.ai_model_id = ai_model_id
 
     def find_chat_session_by_id(self, chat_session_id: str) -> StoredChatSession | None:
         return self._chat_session_map.get(chat_session_id)

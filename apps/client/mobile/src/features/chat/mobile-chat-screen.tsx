@@ -22,8 +22,8 @@ import {
 } from "./mobile-chat-api-client";
 import { USER_MESSAGE_MAX_LENGTH } from "./mobile-chat-types";
 import type {
+  AiModelId,
   AiModelOption,
-  AiModelProvider,
   CharacterSummary,
   ChatMessage,
   ChatSessionSummary,
@@ -41,10 +41,7 @@ function formatMessageTime(createdAt: string): string {
 
 function formatSessionCreatedAt(createdAt: string): string {
   const date = new Date(createdAt);
-  return date.toLocaleDateString([], {
-    month: "short",
-    day: "numeric",
-  });
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
 function formatTokenUsageText(message: ChatMessage): string {
@@ -84,8 +81,7 @@ export function MobileChatScreen() {
   const [chatSessionList, setChatSessionList] = useState<ChatSessionSummary[]>([]);
   const [messageList, setMessageList] = useState<ChatMessage[]>([]);
   const [aiModelOptionList, setAiModelOptionList] = useState<AiModelOption[]>([]);
-  const [selectedAiModelProvider, setSelectedAiModelProvider] =
-    useState<AiModelProvider | "">("");
+  const [selectedAiModelId, setSelectedAiModelId] = useState<AiModelId | "">("");
   const [userMessageText, setUserMessageText] = useState("");
   const [isLoadingCharacterList, setIsLoadingCharacterList] = useState(false);
   const [isLoadingSessionList, setIsLoadingSessionList] = useState(false);
@@ -95,23 +91,17 @@ export function MobileChatScreen() {
     useState<ClientDailyRequestUsageResponse | null>(null);
   const isSendingMessageRef = useRef(false);
 
-  const selectedCharacter = useMemo(
-    () =>
-      characterList.find(
-        (character) => character.character_id === selectedCharacterId
-      ) ?? null,
-    [characterList, selectedCharacterId]
-  );
-  const aiModelLabelMap = useMemo<Record<AiModelProvider, string>>(() => {
-    const fallbackLabelMap = {} as Record<AiModelProvider, string>;
+  const selectedCharacter = useMemo(() => characterList.find((character) => character.character_id === selectedCharacterId) ?? null, [characterList, selectedCharacterId]);
+  const aiModelLabelMap = useMemo<Record<AiModelId, string>>(() => {
+    const fallbackLabelMap = {} as Record<AiModelId, string>;
     for (const aiModelOption of aiModelOptionList) {
-      fallbackLabelMap[aiModelOption.ai_model_provider] = aiModelOption.ai_model_label;
+      fallbackLabelMap[aiModelOption.ai_model_id] = aiModelOption.ai_model_label;
     }
     return fallbackLabelMap;
   }, [aiModelOptionList]);
 
-  const formatAiModelProviderLabel = (aiModelProvider: AiModelProvider): string => {
-    return aiModelLabelMap[aiModelProvider] ?? aiModelProvider;
+  const formatAiModelLabel = (aiModelId: AiModelId): string => {
+    return aiModelLabelMap[aiModelId] ?? aiModelId;
   };
 
   const loadDailyRequestUsageAction = async () => {
@@ -134,21 +124,18 @@ export function MobileChatScreen() {
         const loadedAiModelOptionList =
           aiModelOptionListResponse.ai_model_option_list;
         setAiModelOptionList(loadedAiModelOptionList);
-        setSelectedAiModelProvider((currentProvider) => {
+        setSelectedAiModelId((currentModelId) => {
           if (
-            currentProvider &&
-            loadedAiModelOptionList.some(
-              (aiModelOption) =>
-                aiModelOption.ai_model_provider === currentProvider
-            )
+            currentModelId &&
+            loadedAiModelOptionList.some((aiModelOption) => aiModelOption.ai_model_id === currentModelId)
           ) {
-            return currentProvider;
+            return currentModelId;
           }
-          return loadedAiModelOptionList[0]?.ai_model_provider ?? "";
+          return loadedAiModelOptionList[0]?.ai_model_id ?? "";
         });
       } catch (error) {
         setAiModelOptionList([]);
-        setSelectedAiModelProvider("");
+        setSelectedAiModelId("");
         setErrorMessage("AI 모델 목록을 불러오지 못했습니다.");
       }
     };
@@ -175,10 +162,7 @@ export function MobileChatScreen() {
     void loadCharacterList();
   }, []);
 
-  const loadSessionListAction = async (
-    guestIdValue: string,
-    characterIdValue: string
-  ) => {
+  const loadSessionListAction = async (guestIdValue: string, characterIdValue: string) => {
     if (!characterIdValue) {
       setChatSessionList([]);
       return;
@@ -214,7 +198,7 @@ export function MobileChatScreen() {
     try {
       setErrorMessage(null);
       setActiveSessionId(chatSession.chat_session_id);
-      setSelectedAiModelProvider(chatSession.ai_model_provider);
+      setSelectedAiModelId(chatSession.ai_model_id);
       const loadedMessages = await fetchChatMessageList(chatSession.chat_session_id);
       setMessageList(loadedMessages.message_list);
     } catch (error) {
@@ -223,23 +207,17 @@ export function MobileChatScreen() {
   };
 
   const startSessionAction = async () => {
-    if (!selectedCharacterId || !selectedAiModelProvider) {
+    if (!selectedCharacterId || !selectedAiModelId) {
       return;
     }
 
     try {
       setErrorMessage(null);
-      const createdSession = await createChatSession(
-        selectedCharacterId,
-        guestId,
-        selectedAiModelProvider
-      );
+      const createdSession = await createChatSession(selectedCharacterId, guestId, selectedAiModelId);
       setActiveSessionId(createdSession.chat_session_id);
-      setSelectedAiModelProvider(createdSession.ai_model_provider);
+      setSelectedAiModelId(createdSession.ai_model_id);
 
-      const loadedMessages = await fetchChatMessageList(
-        createdSession.chat_session_id
-      );
+      const loadedMessages = await fetchChatMessageList(createdSession.chat_session_id);
       setMessageList(loadedMessages.message_list);
       await loadSessionListAction(guestId, selectedCharacterId);
     } catch (error) {
@@ -252,7 +230,7 @@ export function MobileChatScreen() {
     if (
       !cleanMessageText ||
       !selectedCharacterId ||
-      !selectedAiModelProvider ||
+      !selectedAiModelId ||
       isSendingMessageRef.current
     ) {
       return;
@@ -287,14 +265,10 @@ export function MobileChatScreen() {
 
       let sessionId = activeSessionId;
       if (!sessionId) {
-        const createdSession = await createChatSession(
-          selectedCharacterId,
-          guestId,
-          selectedAiModelProvider
-        );
+        const createdSession = await createChatSession(selectedCharacterId, guestId, selectedAiModelId);
         sessionId = createdSession.chat_session_id;
         setActiveSessionId(sessionId);
-        setSelectedAiModelProvider(createdSession.ai_model_provider);
+        setSelectedAiModelId(createdSession.ai_model_id);
         await loadSessionListAction(guestId, selectedCharacterId);
       }
 
@@ -302,11 +276,7 @@ export function MobileChatScreen() {
         throw new Error("채팅 세션 ID가 생성되지 않았습니다.");
       }
 
-      const createdMessage = await createChatMessage(
-        sessionId,
-        cleanMessageText,
-        selectedAiModelProvider
-      );
+      const createdMessage = await createChatMessage(sessionId, cleanMessageText, selectedAiModelId);
       setMessageList((previousMessageList) =>
         previousMessageList.map((message) => {
           if (message.message_id === optimisticUserMessageId) {
@@ -398,26 +368,20 @@ export function MobileChatScreen() {
               {dailyRequestUsage ? (
                 <Text style={styles.usageText} numberOfLines={1}>
                   내 일일 요청{" "}
-                  {formatDailyRequestLimitText(
-                    dailyRequestUsage.client_daily_request_count,
-                    dailyRequestUsage.client_daily_request_limit
-                  )}{" "}
+                  {formatDailyRequestLimitText(dailyRequestUsage.client_daily_request_count, dailyRequestUsage.client_daily_request_limit)}{" "}
                   · 전체{" "}
-                  {formatDailyRequestLimitText(
-                    dailyRequestUsage.daily_request_count,
-                    dailyRequestUsage.daily_request_limit
-                  )}
+                  {formatDailyRequestLimitText(dailyRequestUsage.daily_request_count, dailyRequestUsage.daily_request_limit)}
                 </Text>
               ) : null}
             </View>
             <Pressable
               style={[
                 styles.startButton,
-                (!selectedCharacterId || !selectedAiModelProvider) &&
+                (!selectedCharacterId || !selectedAiModelId) &&
                   styles.disabledSendButton,
               ]}
               onPress={() => void startSessionAction()}
-              disabled={!selectedCharacterId || !selectedAiModelProvider}
+              disabled={!selectedCharacterId || !selectedAiModelId}
             >
               <Text style={styles.startButtonText}>대화 열기</Text>
             </Pressable>
@@ -453,7 +417,7 @@ export function MobileChatScreen() {
                           {formatSessionCreatedAt(item.created_at)}
                         </Text>
                         <Text style={styles.sessionButtonDateText}>
-                          {formatAiModelProviderLabel(item.ai_model_provider)}
+                          {formatAiModelLabel(item.ai_model_id)}
                         </Text>
                       </Pressable>
                     );
@@ -465,18 +429,15 @@ export function MobileChatScreen() {
 
           <View style={styles.aiModelRow}>
             {aiModelOptionList.map((aiModelOption) => {
-              const isSelected =
-                selectedAiModelProvider === aiModelOption.ai_model_provider;
+              const isSelected = selectedAiModelId === aiModelOption.ai_model_id;
               return (
                 <Pressable
-                  key={aiModelOption.ai_model_provider}
+                  key={aiModelOption.ai_model_id}
                   style={[
                     styles.aiModelButton,
                     isSelected && styles.activeAiModelButton,
                   ]}
-                  onPress={() =>
-                    setSelectedAiModelProvider(aiModelOption.ai_model_provider)
-                  }
+                  onPress={() => setSelectedAiModelId(aiModelOption.ai_model_id)}
                   disabled={isSendingMessage || !selectedCharacterId}
                 >
                   <Text
@@ -551,7 +512,7 @@ export function MobileChatScreen() {
                 editable={
                   !isSendingMessage &&
                   Boolean(selectedCharacterId) &&
-                  Boolean(selectedAiModelProvider)
+                  Boolean(selectedAiModelId)
                 }
               />
               <Pressable
@@ -563,7 +524,7 @@ export function MobileChatScreen() {
                 disabled={
                   isSendingMessage ||
                   !selectedCharacterId ||
-                  !selectedAiModelProvider
+                  !selectedAiModelId
                 }
               >
                 <Text style={styles.sendButtonText}>

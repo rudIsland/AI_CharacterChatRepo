@@ -1,8 +1,8 @@
 import { createChatApiClient } from "@ai-character-chat/shared";
 import type {
+  AiModelId,
   AiModelOptionListResponse,
   AdminDailyRequestUsageResponse,
-  AiModelProvider,
   CharacterSummary,
   ChatMessageCreateResponse,
   ChatMessageListResponse,
@@ -13,9 +13,7 @@ import type {
 function getRequiredApiBaseUrl(): string {
   const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
   if (!apiBaseUrl) {
-    throw new Error(
-      "EXPO_PUBLIC_API_BASE_URL is required. Set it in apps/client/mobile/.env."
-    );
+    throw new Error("EXPO_PUBLIC_API_BASE_URL is required. Set it in apps/client/mobile/.env.");
   }
   return apiBaseUrl;
 }
@@ -32,22 +30,15 @@ export async function fetchDailyRequestUsage(): Promise<ClientDailyRequestUsageR
   return chatApiClient.fetchDailyRequestUsage();
 }
 
-export async function fetchAdminDailyRequestUsage(
-  adminApiKey: string
-): Promise<AdminDailyRequestUsageResponse> {
+export async function fetchAdminDailyRequestUsage(adminApiKey: string): Promise<AdminDailyRequestUsageResponse> {
   return chatApiClient.fetchAdminDailyRequestUsage(adminApiKey);
 }
 
-export async function resetAdminDailyRequestUsage(
-  adminApiKey: string
-): Promise<AdminDailyRequestUsageResponse> {
+export async function resetAdminDailyRequestUsage(adminApiKey: string): Promise<AdminDailyRequestUsageResponse> {
   return chatApiClient.resetAdminDailyRequestUsage(adminApiKey);
 }
 
-export async function resetAdminDailyRequestIpUsage(
-  adminApiKey: string,
-  ipAddress: string
-): Promise<AdminDailyRequestUsageResponse> {
+export async function resetAdminDailyRequestIpUsage(adminApiKey: string, ipAddress: string): Promise<AdminDailyRequestUsageResponse> {
   return chatApiClient.resetAdminDailyRequestIpUsage(adminApiKey, ipAddress);
 }
 
@@ -55,34 +46,18 @@ export async function fetchCharacterList(): Promise<CharacterSummary[]> {
   return chatApiClient.fetchCharacterList();
 }
 
-export async function createChatSession(
-  characterId: string,
-  guestId: string,
-  aiModelProvider?: AiModelProvider
-): Promise<ChatSessionSummary> {
-  return chatApiClient.createChatSession(characterId, guestId, aiModelProvider);
+export async function createChatSession(characterId: string, guestId: string, aiModelId?: AiModelId): Promise<ChatSessionSummary> {
+  return chatApiClient.createChatSession(characterId, guestId, aiModelId);
 }
 
-export async function listChatSessionByGuestId(
-  guestId: string
-): Promise<ChatSessionSummary[]> {
+export async function listChatSessionByGuestId(guestId: string): Promise<ChatSessionSummary[]> {
   return chatApiClient.listChatSessionByGuestId(guestId);
 }
 
-export async function fetchChatMessageList(
-  chatSessionId: string
-): Promise<ChatMessageListResponse> {
+export async function fetchChatMessageList(chatSessionId: string): Promise<ChatMessageListResponse> {
   return chatApiClient.fetchChatMessageList(chatSessionId);
 }
 
-export async function createChatMessage(
-  chatSessionId: string,
-  userMessageText: string,
-  aiModelProvider?: AiModelProvider
-): Promise<ChatMessageCreateResponse> {
-  return chatApiClient.createChatMessage(
-    chatSessionId,
-    userMessageText,
-    aiModelProvider
-  );
+export async function createChatMessage(chatSessionId: string, userMessageText: string, aiModelId?: AiModelId): Promise<ChatMessageCreateResponse> {
+  return chatApiClient.createChatMessage(chatSessionId, userMessageText, aiModelId);
 }

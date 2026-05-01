@@ -1,5 +1,6 @@
 export type {
   AdminDailyRequestUsageResponse,
+  AiModelId,
   AiModelOption,
   AiModelProvider,
   CharacterSummary,

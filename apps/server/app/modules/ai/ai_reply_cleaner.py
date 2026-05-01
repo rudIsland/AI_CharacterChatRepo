@@ -36,11 +36,7 @@ class AiReplyCleaner:
 
         return cleaned_text
 
-    def is_same_as_user_message(
-        self,
-        reply_text: str,
-        last_user_message: str,
-    ) -> bool:
+    def is_same_as_user_message(self, reply_text: str, last_user_message: str) -> bool:
         if not last_user_message:
             return False
 

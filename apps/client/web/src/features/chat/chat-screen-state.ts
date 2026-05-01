@@ -10,8 +10,8 @@ import {
   fetchChatMessageList,
 } from "@/features/chat/chat-api-client";
 import type {
+  AiModelId,
   AiModelOption,
-  AiModelProvider,
   CharacterSummary,
   ChatMessage,
   ClientDailyRequestUsageResponse,
@@ -60,8 +60,7 @@ export function useChatScreenState() {
   const [guestId, setGuestId] = useState("");
   const [messageList, setMessageList] = useState<ChatMessageView[]>([]);
   const [aiModelOptionList, setAiModelOptionList] = useState<AiModelOption[]>([]);
-  const [selectedAiModelProvider, setSelectedAiModelProvider] =
-    useState<AiModelProvider | "">("");
+  const [selectedAiModelId, setSelectedAiModelId] = useState<AiModelId | "">("");
   const [userMessageText, setUserMessageText] = useState("");
   const [isLoadingCharacterList, setIsLoadingCharacterList] = useState(true);
   const [isServerWakeNoticeVisible, setIsServerWakeNoticeVisible] =
@@ -75,13 +74,7 @@ export function useChatScreenState() {
     useState<ClientDailyRequestUsageResponse | null>(null);
   const isSendingMessageRef = useRef(false);
 
-  const selectedCharacter = useMemo(
-    () =>
-      characterList.find(
-        (character) => character.character_id === selectedCharacterId
-      ) ?? null,
-    [characterList, selectedCharacterId]
-  );
+  const selectedCharacter = useMemo(() => characterList.find((character) => character.character_id === selectedCharacterId) ?? null, [characterList, selectedCharacterId]);
 
   const selectedCharacterImageUrl = selectedCharacter
     ? buildApiAssetUrl(selectedCharacter.character_image_url)
@@ -95,9 +88,7 @@ export function useChatScreenState() {
     const messageListFromServer = await fetchChatMessageList(chatSessionId);
     setMessageList(messageListFromServer.message_list);
     setUsedTokenCount(messageListFromServer.used_token_count ?? 0);
-    setTokenLimitCount(
-      messageListFromServer.token_limit_count ?? defaultTokenLimitCount
-    );
+    setTokenLimitCount(messageListFromServer.token_limit_count ?? defaultTokenLimitCount);
   };
 
   const refreshDailyRequestUsageAction = async () => {
@@ -136,12 +127,10 @@ export function useChatScreenState() {
         const aiModelListFromServer = aiModelListResponse.ai_model_option_list;
 
         setAiModelOptionList(aiModelListFromServer);
-        setSelectedAiModelProvider(
-          aiModelListFromServer[0]?.ai_model_provider ?? ""
-        );
+        setSelectedAiModelId(aiModelListFromServer[0]?.ai_model_id ?? "");
       } catch (error) {
         setAiModelOptionList([]);
-        setSelectedAiModelProvider("");
+        setSelectedAiModelId("");
         setErrorMessage("AI 모델 목록을 불러오지 못했습니다. 서버 상태를 확인해 주세요.");
       }
     };
@@ -168,7 +157,7 @@ export function useChatScreenState() {
   }, []);
 
   useEffect(() => {
-    if (!guestId || !selectedCharacterId || !selectedAiModelProvider) {
+    if (!guestId || !selectedCharacterId || !selectedAiModelId) {
       return;
     }
 
@@ -179,30 +168,22 @@ export function useChatScreenState() {
         setIsOpeningSession(true);
         setErrorMessage(null);
 
-        const openedChatSession = await createChatSession(
-          selectedCharacterId,
-          guestId,
-          selectedAiModelProvider
-        );
+        const openedChatSession = await createChatSession(selectedCharacterId, guestId, selectedAiModelId);
         if (!shouldUpdateScreen) {
           return;
         }
 
         setActiveSessionId(openedChatSession.chat_session_id);
-        setSelectedAiModelProvider(openedChatSession.ai_model_provider);
+        setSelectedAiModelId(openedChatSession.ai_model_id);
 
-        const messageListFromServer = await fetchChatMessageList(
-          openedChatSession.chat_session_id
-        );
+        const messageListFromServer = await fetchChatMessageList(openedChatSession.chat_session_id);
         if (!shouldUpdateScreen) {
           return;
         }
 
         setMessageList(messageListFromServer.message_list);
         setUsedTokenCount(messageListFromServer.used_token_count ?? 0);
-        setTokenLimitCount(
-          messageListFromServer.token_limit_count ?? defaultTokenLimitCount
-        );
+        setTokenLimitCount(messageListFromServer.token_limit_count ?? defaultTokenLimitCount);
       } catch (error) {
         if (shouldUpdateScreen) {
           setErrorMessage("이 캐릭터의 대화를 불러오지 못했습니다.");
@@ -222,15 +203,13 @@ export function useChatScreenState() {
   }, [
     guestId,
     selectedCharacterId,
-    selectedAiModelProvider,
+    selectedAiModelId,
     selectedCharacterRefreshCount,
   ]);
 
   const selectCharacterAction = (characterId: string) => {
     setSelectedCharacterId(characterId);
-    setSelectedCharacterRefreshCount(
-      (previousRefreshCount) => previousRefreshCount + 1
-    );
+    setSelectedCharacterRefreshCount((previousRefreshCount) => previousRefreshCount + 1);
     setActiveSessionId(null);
     setMessageList([]);
     setUsedTokenCount(0);
@@ -243,7 +222,7 @@ export function useChatScreenState() {
     if (
       !cleanMessageText ||
       !selectedCharacterId ||
-      !selectedAiModelProvider ||
+      !selectedAiModelId ||
       isOpeningSession ||
       usedTokenCount >= tokenLimitCount ||
       isSendingMessageRef.current
@@ -283,20 +262,12 @@ export function useChatScreenState() {
       setUserMessageText("");
 
       if (!chatSessionId) {
-        const openedChatSession = await createChatSession(
-          selectedCharacterId,
-          guestId,
-          selectedAiModelProvider
-        );
+        const openedChatSession = await createChatSession(selectedCharacterId, guestId, selectedAiModelId);
         chatSessionId = openedChatSession.chat_session_id;
         setActiveSessionId(chatSessionId);
       }
 
-      const createdMessage = await createChatMessage(
-        chatSessionId,
-        cleanMessageText,
-        selectedAiModelProvider
-      );
+      const createdMessage = await createChatMessage(chatSessionId, cleanMessageText, selectedAiModelId);
 
       setMessageList((previousMessageList) =>
         previousMessageList.map((message) => {
@@ -310,9 +281,7 @@ export function useChatScreenState() {
         })
       );
       setUsedTokenCount(createdMessage.used_token_count ?? 0);
-      setTokenLimitCount(
-        createdMessage.token_limit_count ?? defaultTokenLimitCount
-      );
+      setTokenLimitCount(createdMessage.token_limit_count ?? defaultTokenLimitCount);
       await refreshDailyRequestUsageAction();
     } catch (error) {
       if (chatSessionId) {
@@ -323,9 +292,7 @@ export function useChatScreenState() {
         }
       }
 
-      setErrorMessage(
-        getErrorMessage(error, "메시지를 보내지 못했습니다. 다시 시도해 주세요.")
-      );
+      setErrorMessage(getErrorMessage(error, "메시지를 보내지 못했습니다. 다시 시도해 주세요."));
       setMessageList((previousMessageList) =>
         previousMessageList.map((message) => {
           if (message.isPending) {
@@ -352,7 +319,7 @@ export function useChatScreenState() {
     selectedCharacterId,
     messageList,
     aiModelOptionList,
-    selectedAiModelProvider,
+    selectedAiModelId,
     userMessageText,
     isLoadingCharacterList,
     isServerWakeNoticeVisible,
@@ -362,7 +329,7 @@ export function useChatScreenState() {
     tokenLimitCount,
     dailyRequestUsage,
     errorMessage,
-    setSelectedAiModelProvider,
+    setSelectedAiModelId,
     setUserMessageText,
     selectCharacterAction,
     sendMessageAction,

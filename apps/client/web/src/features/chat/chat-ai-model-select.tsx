@@ -1,10 +1,10 @@
-import type { AiModelOption, AiModelProvider } from "@/features/chat/chat-types";
+import type { AiModelId, AiModelOption } from "@/features/chat/chat-types";
 
 type ChatAiModelSelectProps = {
   aiModelOptionList: AiModelOption[];
-  selectedAiModelProvider: AiModelProvider | "";
+  selectedAiModelId: AiModelId | "";
   isDisabled: boolean;
-  onAiModelProviderChange: (aiModelProvider: AiModelProvider) => void;
+  onAiModelIdChange: (aiModelId: AiModelId) => void;
 };
 
 function AiModelIcon({ provider }: { provider?: string }) {
@@ -71,30 +71,30 @@ function AiModelIcon({ provider }: { provider?: string }) {
 
 export function ChatAiModelSelect({
   aiModelOptionList,
-  selectedAiModelProvider,
+  selectedAiModelId,
   isDisabled,
-  onAiModelProviderChange,
+  onAiModelIdChange,
 }: ChatAiModelSelectProps) {
+  const selectedAiModelOption = aiModelOptionList.find((aiModelOption) => aiModelOption.ai_model_id === selectedAiModelId);
+
   return (
     <div
       className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-300 transition hover:bg-slate-700 focus-within:ring-2 focus-within:ring-emerald-500"
       title="AI 모델 선택"
     >
       <span className="pointer-events-none absolute flex items-center justify-center">
-        <AiModelIcon provider={selectedAiModelProvider} />
+        <AiModelIcon provider={selectedAiModelOption?.ai_model_provider} />
       </span>
       <select
         className="h-full w-full cursor-pointer appearance-none bg-transparent text-transparent outline-none [&>option]:text-slate-900"
-        value={selectedAiModelProvider}
-        onChange={(event) =>
-          onAiModelProviderChange(event.target.value as AiModelProvider)
-        }
+        value={selectedAiModelId}
+        onChange={(event) => onAiModelIdChange(event.target.value as AiModelId)}
         disabled={isDisabled}
       >
         {aiModelOptionList.map((aiModelOption) => (
           <option
-            key={aiModelOption.ai_model_provider}
-            value={aiModelOption.ai_model_provider}
+            key={aiModelOption.ai_model_id}
+            value={aiModelOption.ai_model_id}
           >
             {aiModelOption.ai_model_label}
           </option>

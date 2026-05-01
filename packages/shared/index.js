@@ -3,7 +3,11 @@
  */
 
 /**
- * @typedef {'gpt' | 'gemini' | 'local_ai'} AiModelProvider
+ * @typedef {'openai' | 'gemini' | 'local_ai'} AiModelProvider
+ */
+
+/**
+ * @typedef {'openai_gpt_4_1_mini' | 'openai_gpt_5_4' | 'gemini_2_5_flash' | 'gemini_3_1_pro_preview' | 'local_ai'} AiModelId
  */
 
 /**
@@ -24,7 +28,7 @@
  *   chat_session_id: string;
  *   character_id: string;
  *   guest_id: string;
- *   ai_model_provider: AiModelProvider;
+ *   ai_model_id: AiModelId;
  *   created_at: string;
  * }} ChatSessionSummary
  */
@@ -53,6 +57,7 @@
 
 /**
  * @typedef {{
+ *   ai_model_id: AiModelId;
  *   ai_model_provider: AiModelProvider;
  *   ai_model_name: string;
  *   ai_model_label: string;
@@ -284,7 +289,12 @@ function delay(ms) {
   });
 }
 
-async function requestJsonOnce(apiBaseUrl, requestPath, requestInit, timeoutMs) {
+async function requestJsonOnce(
+  apiBaseUrl,
+  requestPath,
+  requestInit,
+  timeoutMs
+) {
   const timeoutController = createTimeoutController(timeoutMs);
 
   try {
@@ -331,7 +341,12 @@ async function requestJsonOnce(apiBaseUrl, requestPath, requestInit, timeoutMs) 
   }
 }
 
-async function requestJson(apiBaseUrl, requestPath, requestInit, options) {
+async function requestJson(
+  apiBaseUrl,
+  requestPath,
+  requestInit,
+  options
+) {
   const method = getRequestMethod(requestInit);
   const retryCount = method === "GET" ? options.retryCount : 0;
 
@@ -363,7 +378,12 @@ export function createChatApiClient(params) {
   return {
     /** @returns {Promise<AiModelOptionListResponse>} */
     fetchAiModelOptionList() {
-      return requestJson(apiBaseUrl, "/ai-model-options", undefined, requestOptions);
+      return requestJson(
+        apiBaseUrl,
+        "/ai-model-options",
+        undefined,
+        requestOptions
+      );
     },
 
     /** @returns {Promise<ClientDailyRequestUsageResponse>} */
@@ -449,16 +469,21 @@ export function createChatApiClient(params) {
 
     /** @returns {Promise<CharacterSummary[]>} */
     fetchCharacterList() {
-      return requestJson(apiBaseUrl, "/characters", undefined, requestOptions);
+      return requestJson(
+        apiBaseUrl,
+        "/characters",
+        undefined,
+        requestOptions
+      );
     },
 
     /**
      * @param {string} characterId
      * @param {string} guestId
-     * @param {AiModelProvider} [aiModelProvider]
+     * @param {AiModelId} [aiModelId]
      * @returns {Promise<ChatSessionSummary>}
      */
-    createChatSession(characterId, guestId, aiModelProvider) {
+    createChatSession(characterId, guestId, aiModelId) {
       return requestJson(
         apiBaseUrl,
         "/chat-sessions",
@@ -468,7 +493,7 @@ export function createChatApiClient(params) {
           body: JSON.stringify({
             character_id: characterId,
             guest_id: guestId,
-            ...(aiModelProvider ? { ai_model_provider: aiModelProvider } : {}),
+            ...(aiModelId ? { ai_model_id: aiModelId } : {}),
           }),
         },
         requestOptions
@@ -505,10 +530,10 @@ export function createChatApiClient(params) {
     /**
      * @param {string} chatSessionId
      * @param {string} userMessageText
-     * @param {AiModelProvider} [aiModelProvider]
+     * @param {AiModelId} [aiModelId]
      * @returns {Promise<ChatMessageCreateResponse>}
      */
-    createChatMessage(chatSessionId, userMessageText, aiModelProvider) {
+    createChatMessage(chatSessionId, userMessageText, aiModelId) {
       return requestJson(
         apiBaseUrl,
         `/chat-sessions/${chatSessionId}/messages`,
@@ -517,7 +542,7 @@ export function createChatApiClient(params) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             user_message_text: userMessageText,
-            ai_model_provider: aiModelProvider ?? null,
+            ai_model_id: aiModelId ?? null,
           }),
         },
         requestOptions

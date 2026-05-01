@@ -1,5 +1,11 @@
 export type ChatRole = "user" | "assistant";
-export type AiModelProvider = "gpt" | "gemini" | "local_ai";
+export type AiModelProvider = "openai" | "gemini" | "local_ai";
+export type AiModelId =
+  | "openai_gpt_4_1_mini"
+  | "openai_gpt_5_4"
+  | "gemini_2_5_flash"
+  | "gemini_3_1_pro_preview"
+  | "local_ai";
 export const USER_MESSAGE_MAX_LENGTH: 500;
 
 export interface CharacterSummary {
@@ -17,7 +23,7 @@ export interface ChatSessionSummary {
   chat_session_id: string;
   character_id: string;
   guest_id: string;
-  ai_model_provider: AiModelProvider;
+  ai_model_id: AiModelId;
   created_at: string;
 }
 
@@ -47,6 +53,7 @@ export interface ChatMessageListResponse {
 }
 
 export interface AiModelOption {
+  ai_model_id: AiModelId;
   ai_model_provider: AiModelProvider;
   ai_model_name: string;
   ai_model_label: string;
@@ -89,35 +96,16 @@ export interface AdminDailyRequestUsageResponse {
 
 export interface ChatApiClient {
   fetchDailyRequestUsage(): Promise<ClientDailyRequestUsageResponse>;
-  fetchAdminDailyRequestUsage(
-    adminApiKey: string
-  ): Promise<AdminDailyRequestUsageResponse>;
-  resetAdminDailyRequestUsage(
-    adminApiKey: string
-  ): Promise<AdminDailyRequestUsageResponse>;
-  resetAdminDailyRequestIpUsage(
-    adminApiKey: string,
-    ipAddress: string
-  ): Promise<AdminDailyRequestUsageResponse>;
-  updateAdminDailyRequestIpCount(
-    adminApiKey: string,
-    ipAddress: string,
-    dailyRequestCount: number
-  ): Promise<AdminDailyRequestUsageResponse>;
+  fetchAdminDailyRequestUsage(adminApiKey: string): Promise<AdminDailyRequestUsageResponse>;
+  resetAdminDailyRequestUsage(adminApiKey: string): Promise<AdminDailyRequestUsageResponse>;
+  resetAdminDailyRequestIpUsage(adminApiKey: string, ipAddress: string): Promise<AdminDailyRequestUsageResponse>;
+  updateAdminDailyRequestIpCount(adminApiKey: string, ipAddress: string, dailyRequestCount: number): Promise<AdminDailyRequestUsageResponse>;
   fetchAiModelOptionList(): Promise<AiModelOptionListResponse>;
   fetchCharacterList(): Promise<CharacterSummary[]>;
-  createChatSession(
-    characterId: string,
-    guestId: string,
-    aiModelProvider?: AiModelProvider
-  ): Promise<ChatSessionSummary>;
+  createChatSession(characterId: string, guestId: string, aiModelId?: AiModelId): Promise<ChatSessionSummary>;
   listChatSessionByGuestId(guestId: string): Promise<ChatSessionSummary[]>;
   fetchChatMessageList(chatSessionId: string): Promise<ChatMessageListResponse>;
-  createChatMessage(
-    chatSessionId: string,
-    userMessageText: string,
-    aiModelProvider?: AiModelProvider
-  ): Promise<ChatMessageCreateResponse>;
+  createChatMessage(chatSessionId: string, userMessageText: string, aiModelId?: AiModelId): Promise<ChatMessageCreateResponse>;
 }
 
 export class ChatApiError extends Error {
@@ -128,21 +116,14 @@ export class ChatApiError extends Error {
   isNetworkError: boolean;
   cause?: unknown;
 
-  constructor(
-    message: string,
-    params?: {
-      statusCode?: number;
-      requestPath?: string;
-      responseBody?: unknown;
-      isTimeout?: boolean;
-      isNetworkError?: boolean;
-      cause?: unknown;
-    }
-  );
+  constructor(message: string, params?: {
+    statusCode?: number;
+    requestPath?: string;
+    responseBody?: unknown;
+    isTimeout?: boolean;
+    isNetworkError?: boolean;
+    cause?: unknown;
+  });
 }
 
-export function createChatApiClient(params: {
-  apiBaseUrl: string;
-  requestTimeoutMs?: number;
-  retryCount?: number;
-}): ChatApiClient;
+export function createChatApiClient(params: { apiBaseUrl: string; requestTimeoutMs?: number; retryCount?: number }): ChatApiClient;
