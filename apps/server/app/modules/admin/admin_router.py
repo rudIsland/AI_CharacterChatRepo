@@ -1,3 +1,5 @@
+from secrets import compare_digest
+
 from fastapi import APIRouter, Header, HTTPException, Request, status
 
 from app.core.app_settings import get_app_settings
@@ -16,7 +18,7 @@ def require_admin_api_key(x_admin_api_key: str | None = Header(default=None)) ->
     if not app_settings.admin_api_key:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin API is disabled.")
 
-    if x_admin_api_key != app_settings.admin_api_key:
+    if x_admin_api_key is None or not compare_digest(x_admin_api_key, app_settings.admin_api_key):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin API key.")
 
 

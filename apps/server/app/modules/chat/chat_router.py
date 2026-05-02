@@ -24,7 +24,18 @@ from app.modules.chat.chat_usage_tracker import (
 chat_router = APIRouter(prefix="/chat-sessions", tags=["chat"])
 
 app_settings = get_app_settings()
-chat_store = InMemoryChatStore()
+
+
+def create_chat_store():
+    if not app_settings.database_url:
+        return InMemoryChatStore()
+
+    from app.modules.chat.sql_chat_store import SqlChatStore
+
+    return SqlChatStore(database_url=app_settings.database_url)
+
+
+chat_store = create_chat_store()
 ai_reply_service = AiReplyService(app_settings=app_settings)
 chat_service = ChatService(chat_store=chat_store, ai_reply_service=ai_reply_service, app_settings=app_settings)
 

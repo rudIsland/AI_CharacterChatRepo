@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from threading import Lock
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import uuid4
 
 from app.modules.chat.chat_schema import AiModelId
@@ -39,6 +39,42 @@ class StoredChatMessage:
     total_token_count: int | None = None
     # 메시지가 저장된 시간입니다.
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ChatStore(Protocol):
+    def create_chat_session(
+        self,
+        character_id: str,
+        guest_id: str,
+        ai_model_id: AiModelId,
+    ) -> StoredChatSession:
+        pass
+
+    def find_chat_session_by_guest_id_and_character_id(self, guest_id: str, character_id: str) -> StoredChatSession | None:
+        pass
+
+    def update_chat_session_ai_model_id(self, chat_session_id: str, ai_model_id: AiModelId) -> None:
+        pass
+
+    def find_chat_session_by_id(self, chat_session_id: str) -> StoredChatSession | None:
+        pass
+
+    def list_chat_session_by_guest_id(self, guest_id: str) -> list[StoredChatSession]:
+        pass
+
+    def list_chat_message_by_session_id(self, chat_session_id: str) -> list[StoredChatMessage]:
+        pass
+
+    def append_chat_message(
+        self,
+        chat_session_id: str,
+        role: Literal["user", "assistant"],
+        message_text: str,
+        input_token_count: int | None = None,
+        output_token_count: int | None = None,
+        total_token_count: int | None = None,
+    ) -> StoredChatMessage:
+        pass
 
 
 class InMemoryChatStore:

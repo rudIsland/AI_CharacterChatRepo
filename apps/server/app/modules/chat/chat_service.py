@@ -17,7 +17,7 @@ from app.modules.chat.chat_schema import (
     ChatSessionMessageListResponse,
     ChatSessionSummary,
 )
-from app.modules.chat.chat_store import InMemoryChatStore, StoredChatMessage, StoredChatSession
+from app.modules.chat.chat_store import ChatStore, StoredChatMessage, StoredChatSession
 
 
 class ChatSessionNotFoundError(Exception):
@@ -35,7 +35,7 @@ class AiModelUnavailableError(Exception):
 class ChatService:
     def __init__(
         self,
-        chat_store: InMemoryChatStore,
+        chat_store: ChatStore,
         ai_reply_service: AiReplyService,
         app_settings: AppSettings,
     ) -> None:
@@ -124,7 +124,7 @@ class ChatService:
                 chat_session_id=chat_session_id,
                 user_message=self._build_chat_message(user_message),
                 assistant_message=self._build_chat_message(assistant_message),
-                used_token_count=self._calculate_used_token_count(chat_session.message_list),
+                used_token_count=self._calculate_used_token_count(self._chat_store.list_chat_message_by_session_id(chat_session_id)),
                 token_limit_count=CHAT_SESSION_TOKEN_LIMIT_COUNT,
             )
 
@@ -165,7 +165,7 @@ class ChatService:
             chat_session_id=chat_session_id,
             user_message=self._build_chat_message(user_message),
             assistant_message=self._build_chat_message(assistant_message),
-            used_token_count=self._calculate_used_token_count(chat_session.message_list),
+            used_token_count=self._calculate_used_token_count(self._chat_store.list_chat_message_by_session_id(chat_session_id)),
             token_limit_count=CHAT_SESSION_TOKEN_LIMIT_COUNT,
         )
 

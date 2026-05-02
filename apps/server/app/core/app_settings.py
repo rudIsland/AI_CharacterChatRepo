@@ -16,6 +16,11 @@ class AppSettings(BaseSettings):
     )
 
     # OpenAI 설정
+    database_url: str | None = Field(
+        default=None,
+        description="Chat session and message database URL. If empty, the server uses the in-memory store.",
+    )
+
     openai_api_key: str | None = Field(
         default=None,
         description="OpenAI 호출에 사용할 API 키입니다. 없으면 OpenAI 응답 생성을 건너뜁니다.",
