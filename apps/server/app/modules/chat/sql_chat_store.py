@@ -10,14 +10,6 @@ from app.modules.chat.chat_schema import AiModelId
 from app.modules.chat.chat_store import StoredChatMessage, StoredChatSession
 
 
-def normalize_database_url(database_url: str) -> str:
-    if database_url.startswith("postgres://"):
-        return database_url.replace("postgres://", "postgresql+psycopg://", 1)
-    if database_url.startswith("postgresql://"):
-        return database_url.replace("postgresql://", "postgresql+psycopg://", 1)
-    return database_url
-
-
 class ChatDatabaseBase(DeclarativeBase):
     pass
 
@@ -55,11 +47,17 @@ class ChatMessageRow(ChatDatabaseBase):
 
 
 class SqlChatStore:
-    def __init__(self, database_url: str) -> None:
-        engine_url = normalize_database_url(database_url)
+    def __init__(self, database_url: str, should_create_tables: bool = True) -> None:
+        engine_url = database_url
         connect_args = {"check_same_thread": False} if engine_url.startswith("sqlite") else {}
+        if engine_url.startswith("postgresql"):
+            connect_args["connect_timeout"] = 10
         self._engine = create_engine(engine_url, pool_pre_ping=True, connect_args=connect_args)
         self._session_factory = sessionmaker(bind=self._engine, expire_on_commit=False)
+        if should_create_tables:
+            self.create_database_tables()
+
+    def create_database_tables(self) -> None:
         ChatDatabaseBase.metadata.create_all(self._engine)
 
     def create_chat_session(

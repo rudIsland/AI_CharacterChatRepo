@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 
+from app.exceptions.app_exception import NotFoundException
 from app.modules.character.character_data import (
     find_character_detail_by_id,
     get_character_summary_list,
@@ -18,5 +19,5 @@ def get_character_list() -> list[CharacterSummary]:
 def get_character_detail(character_id: str) -> CharacterDetail:
     character = find_character_detail_by_id(character_id)
     if character is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Character not found: {character_id}")
+        raise NotFoundException(f"Character not found: {character_id}")
     return character

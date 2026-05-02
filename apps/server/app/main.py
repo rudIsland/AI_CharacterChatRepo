@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.core.app_settings import get_app_settings
+from app.exceptions.app_exception import AppException, handle_app_exception
 from app.modules.chat.chat_usage_tracker import (
     daily_request_limiter,
     get_request_ip_address,
@@ -16,6 +17,7 @@ static_directory = Path(__file__).resolve().parent / "static"
 asset_directory = Path(__file__).resolve().parents[1] / "assets"
 
 app = FastAPI(title=app_settings.app_name)
+app.add_exception_handler(AppException, handle_app_exception)
 
 # API 라우터는 기능별 router를 한 곳에서 묶은 진입점입니다.
 app.include_router(api_router)

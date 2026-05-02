@@ -1,8 +1,9 @@
 from secrets import compare_digest
 
-from fastapi import APIRouter, Header, HTTPException, Request, status
+from fastapi import APIRouter, Header, Request
 
 from app.core.app_settings import get_app_settings
+from app.exceptions.app_exception import NotFoundException, UnauthorizedException
 from app.modules.admin.admin_schema import (
     DailyRequestIpCountUpdateRequest,
     DailyRequestIpResetRequest,
@@ -16,10 +17,10 @@ admin_router = APIRouter(prefix="/admin", tags=["admin"])
 def require_admin_api_key(x_admin_api_key: str | None = Header(default=None)) -> None:
     app_settings = get_app_settings()
     if not app_settings.admin_api_key:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin API is disabled.")
+        raise NotFoundException("Admin API is disabled.")
 
     if x_admin_api_key is None or not compare_digest(x_admin_api_key, app_settings.admin_api_key):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin API key.")
+        raise UnauthorizedException("Invalid admin API key.")
 
 
 def build_daily_request_usage_response(admin_client_ip_address: str) -> DailyRequestUsageResponse:

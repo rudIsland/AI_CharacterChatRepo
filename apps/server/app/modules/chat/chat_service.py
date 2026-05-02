@@ -5,6 +5,7 @@ from app.modules.ai.ai_model_registry import (
     is_ai_model_available,
 )
 from app.core.app_settings import AppSettings
+from app.exceptions.app_exception import BadRequestException, NotFoundException
 from app.modules.character.character_data import (
     find_character_easter_egg_reply,
     find_character_profile_by_id,
@@ -20,16 +21,23 @@ from app.modules.chat.chat_schema import (
 from app.modules.chat.chat_store import ChatStore, StoredChatMessage, StoredChatSession
 
 
-class ChatSessionNotFoundError(Exception):
+class ChatSessionNotFoundError(NotFoundException):
+    def __init__(self, chat_session_id: str) -> None:
+        super().__init__(f"Chat session not found: {chat_session_id}")
+
+
+class ChatSessionTokenLimitExceededError(BadRequestException):
+    def __init__(self) -> None:
+        super().__init__("이 대화의 토큰 한도를 모두 사용했습니다.")
+
+
+class AiModelUnavailableError(BadRequestException):
     pass
 
 
-class ChatSessionTokenLimitExceededError(Exception):
-    pass
-
-
-class AiModelUnavailableError(Exception):
-    pass
+class CharacterNotFoundError(NotFoundException):
+    def __init__(self, character_id: str) -> None:
+        super().__init__(f"Character not found: {character_id}")
 
 
 class ChatService:
@@ -55,7 +63,7 @@ class ChatService:
         # 없는 캐릭터로 세션을 만들 수 없도록 먼저 확인합니다.
         character = find_character_profile_by_id(character_id)
         if character is None:
-            raise ValueError(f"Character not found: {character_id}")
+            raise CharacterNotFoundError(character_id)
         self._raise_if_ai_model_unavailable(ai_model_id)
 
         # 한 사용자는 캐릭터 하나당 하나의 세션만 사용합니다.
@@ -104,11 +112,11 @@ class ChatService:
 
         current_used_token_count = self._calculate_used_token_count(chat_session.message_list)
         if current_used_token_count >= CHAT_SESSION_TOKEN_LIMIT_COUNT:
-            raise ChatSessionTokenLimitExceededError(chat_session_id)
+            raise ChatSessionTokenLimitExceededError()
 
         character = find_character_profile_by_id(chat_session.character_id)
         if character is None:
-            raise ValueError(f"Character not found: {chat_session.character_id}")
+            raise CharacterNotFoundError(chat_session.character_id)
 
         # 요청에서 모델을 바꾸면 세션의 현재 모델도 같이 갱신합니다.
         selected_ai_model_id = ai_model_id or chat_session.ai_model_id

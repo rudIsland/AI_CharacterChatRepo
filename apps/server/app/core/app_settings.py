@@ -20,6 +20,14 @@ class AppSettings(BaseSettings):
         default=None,
         description="Chat session and message database URL. If empty, the server uses the in-memory store.",
     )
+    database_auto_create_tables: bool = Field(
+        default=True,
+        description="Create chat database tables at startup. Keep true for portfolio demos, false when migrations are used.",
+    )
+    database_fallback_to_memory: bool = Field(
+        default=True,
+        description="Use the in-memory chat store if DATABASE_URL is unavailable.",
+    )
 
     openai_api_key: str | None = Field(
         default=None,
