@@ -122,7 +122,7 @@ class SqlChatStore:
             chat_session_row = database_session.get(ChatSessionRow, chat_session_id)
             if chat_session_row is None:
                 return None
-            return self._build_stored_chat_session(chat_session_row)
+            return self._build_stored_chat_session(chat_session_row, should_include_message_list=True)
 
     def list_chat_session_by_guest_id(self, guest_id: str) -> list[StoredChatSession]:
         with self._session_factory() as database_session:
@@ -189,17 +189,21 @@ class SqlChatStore:
             )
         ).first()
 
-    def _build_stored_chat_session(self, chat_session_row: ChatSessionRow) -> StoredChatSession:
+    def _build_stored_chat_session(self, chat_session_row: ChatSessionRow, should_include_message_list: bool = False) -> StoredChatSession:
+        message_list: list[StoredChatMessage] = []
+        if should_include_message_list:
+            message_list = [
+                self._build_stored_chat_message(chat_message_row)
+                for chat_message_row in chat_session_row.message_list
+            ]
+
         return StoredChatSession(
             chat_session_id=chat_session_row.chat_session_id,
             character_id=chat_session_row.character_id,
             guest_id=chat_session_row.guest_id,
             ai_model_id=cast(AiModelId, chat_session_row.ai_model_id),
             created_at=self._ensure_timezone(chat_session_row.created_at),
-            message_list=[
-                self._build_stored_chat_message(chat_message_row)
-                for chat_message_row in chat_session_row.message_list
-            ],
+            message_list=message_list,
         )
 
     def _build_stored_chat_message(self, chat_message_row: ChatMessageRow) -> StoredChatMessage:

@@ -65,6 +65,6 @@ async def create_chat_message(
             user_message_text=request_body.user_message_text,
             ai_model_id=request_body.ai_model_id,
         )
-    except AppException:
+    except Exception:
         daily_request_limiter.decrease_request_count(ip_address)
         raise

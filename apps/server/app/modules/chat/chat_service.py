@@ -71,6 +71,7 @@ class ChatService:
         existing_chat_session = self._chat_store.find_chat_session_by_guest_id_and_character_id(guest_id=guest_id, character_id=character_id)
         if existing_chat_session is not None:
             self._chat_store.update_chat_session_ai_model_id(chat_session_id=existing_chat_session.chat_session_id, ai_model_id=ai_model_id)
+            existing_chat_session.ai_model_id = ai_model_id
             return self._build_chat_session_summary(existing_chat_session)
 
         chat_session = self._chat_store.create_chat_session(character_id=character_id, guest_id=guest_id, ai_model_id=ai_model_id)
