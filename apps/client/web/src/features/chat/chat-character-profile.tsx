@@ -11,14 +11,14 @@ export function ChatCharacterProfile({
 }: ChatCharacterProfileProps) {
   if (!selectedCharacter || !selectedCharacterImageUrl) {
     return (
-      <aside className="shrink-0 rounded-xl border border-slate-800 bg-slate-800/50 p-3 lg:min-h-0 lg:overflow-y-auto lg:rounded-2xl">
+      <aside className="h-full min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-800/50 p-3 lg:rounded-2xl">
         <p className="text-sm text-slate-400">캐릭터를 선택해 주세요.</p>
       </aside>
     );
   }
 
   return (
-    <aside className="shrink-0 rounded-xl border border-slate-800 bg-slate-800/50 p-3 lg:min-h-0 lg:overflow-y-auto lg:rounded-2xl">
+    <aside className="h-full min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-800/50 p-3 lg:rounded-2xl">
       <div className="flex min-h-0 gap-3 lg:flex-col">
         <img
           src={selectedCharacterImageUrl}
