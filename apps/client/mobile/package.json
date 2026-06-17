@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@ai-character-chat/shared": "file:../../../packages/shared",
-    "expo": "~53.0.20",
+    "expo": "~55.0.15",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-native": "0.79.6"
